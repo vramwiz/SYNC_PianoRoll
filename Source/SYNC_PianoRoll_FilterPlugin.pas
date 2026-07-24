@@ -13,9 +13,22 @@ procedure FinalizePianoRollFilter;
 
 implementation
 
+uses
+  SYNC_PianoRoll_ContextManager,
+  SYNC_PianoRoll_FrameShared;
+
 function PianoRollProcVideo(Video: PFILTER_PROC_VIDEO): Byte; cdecl;
+var
+  EffectiveState: TSyncPianoRollFrameState;
+  SharedState: TSyncPianoRollFrameState;
 begin
-  // 最小構成では入力映像を変更しない。
+  try
+    // 描画実装前でも、オブジェクトごとの有効な絶対フレームを更新する。
+    if TryReadPianoRollFrame(SharedState) then
+      ResolvePianoRollFrameState(Video, SharedState, EffectiveState);
+  except
+    // Delphi例外をAviUtl2のコールバック境界より外へ漏らさない。
+  end;
   Result := 1;
 end;
 
@@ -44,10 +57,14 @@ end;
 
 procedure InitializePianoRollFilter;
 begin
+  InitializePianoRollFrameShared;
+  InitializePianoRollContexts;
 end;
 
 procedure FinalizePianoRollFilter;
 begin
+  FinalizePianoRollContexts;
+  FinalizePianoRollFrameShared;
 end;
 
 end.

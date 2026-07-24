@@ -81,6 +81,9 @@
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
         <DCCReference Include="Source\Lib\AviUtl2FilterTypes.pas"/>
+        <DCCReference Include="Source\Lib\SharedMemoryBase.pas"/>
+        <DCCReference Include="Source\Lib\SYNC_PianoRoll_FrameShared.pas"/>
+        <DCCReference Include="Source\SYNC_PianoRoll_ContextManager.pas"/>
         <DCCReference Include="Source\SYNC_PianoRoll_FilterPlugin.pas"/>
         <BuildConfiguration Include="Debug">
             <Key>Cfg_1</Key>

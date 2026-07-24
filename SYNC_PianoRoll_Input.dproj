@@ -80,6 +80,8 @@
         </DelphiCompile>
         <DCCReference Include="Source\SYNC_PianoRoll_InputPlugin.pas"/>
         <DCCReference Include="Source\Lib\AviUtl2InputTypes.pas"/>
+        <DCCReference Include="Source\Lib\SharedMemoryBase.pas"/>
+        <DCCReference Include="Source\Lib\SYNC_PianoRoll_FrameShared.pas"/>
         <BuildConfiguration Include="Debug">
             <Key>Cfg_1</Key>
         </BuildConfiguration>

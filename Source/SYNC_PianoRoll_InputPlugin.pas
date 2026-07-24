@@ -18,7 +18,8 @@ implementation
 
 uses
   System.Math,
-  System.SysUtils;
+  System.SysUtils,
+  SYNC_PianoRoll_FrameShared;
 
 type
   PPianoRollInputContext = ^TPianoRollInputContext;
@@ -127,6 +128,7 @@ begin
 
   Context := PPianoRollInputContext(Ih);
   FillChar(Buf^, Context^.Info.biSizeImage, 0);
+  PublishPianoRollFrame(Frame, Context^.Rate, Context^.Scale);
   Result := Context^.Info.biSizeImage;
 end;
 

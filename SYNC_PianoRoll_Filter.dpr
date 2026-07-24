@@ -7,6 +7,9 @@
 uses
   Winapi.Windows,
   AviUtl2FilterTypes in 'Source\Lib\AviUtl2FilterTypes.pas',
+  SharedMemoryBase in 'Source\Lib\SharedMemoryBase.pas',
+  SYNC_PianoRoll_FrameShared in 'Source\Lib\SYNC_PianoRoll_FrameShared.pas',
+  SYNC_PianoRoll_ContextManager in 'Source\SYNC_PianoRoll_ContextManager.pas',
   SYNC_PianoRoll_FilterPlugin in 'Source\SYNC_PianoRoll_FilterPlugin.pas';
 
 function InitializePlugin(Version: DWORD): Byte; cdecl;
