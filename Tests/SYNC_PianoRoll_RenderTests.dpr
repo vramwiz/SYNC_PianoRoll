@@ -29,9 +29,13 @@ type
 
 var
   CapturedBlackKeyPixels: Integer;
+  CapturedBlackLanePixels: Integer;
+  CapturedBeatLinePixels: Integer;
   CapturedHeight: Integer;
+  CapturedMeasureLinePixels: Integer;
   CapturedOpaquePixels: Integer;
   CapturedWhiteKeyPixels: Integer;
+  CapturedWhiteLanePixels: Integer;
   CapturedWidth: Integer;
 
 procedure Check(Condition: Boolean; const MessageText: string);
@@ -51,7 +55,11 @@ begin
   CapturedHeight := Height;
   CapturedOpaquePixels := 0;
   CapturedBlackKeyPixels := 0;
+  CapturedBlackLanePixels := 0;
+  CapturedBeatLinePixels := 0;
+  CapturedMeasureLinePixels := 0;
   CapturedWhiteKeyPixels := 0;
+  CapturedWhiteLanePixels := 0;
   for I := 0 to Width * Height - 1 do
   begin
     if PPixelArray(Buffer)^[I].A <> 0 then
@@ -66,6 +74,26 @@ begin
       (PPixelArray(Buffer)^[I].B = 242) and
       (PPixelArray(Buffer)^[I].A = 255) then
       Inc(CapturedWhiteKeyPixels);
+    if (PPixelArray(Buffer)^[I].R = 238) and
+      (PPixelArray(Buffer)^[I].G = 238) and
+      (PPixelArray(Buffer)^[I].B = 242) and
+      (PPixelArray(Buffer)^[I].A = 28) then
+      Inc(CapturedWhiteLanePixels);
+    if (PPixelArray(Buffer)^[I].R = 110) and
+      (PPixelArray(Buffer)^[I].G = 110) and
+      (PPixelArray(Buffer)^[I].B = 120) and
+      (PPixelArray(Buffer)^[I].A = 24) then
+      Inc(CapturedBlackLanePixels);
+    if (PPixelArray(Buffer)^[I].R = 255) and
+      (PPixelArray(Buffer)^[I].G = 255) and
+      (PPixelArray(Buffer)^[I].B = 255) and
+      (PPixelArray(Buffer)^[I].A = 48) then
+      Inc(CapturedBeatLinePixels);
+    if (PPixelArray(Buffer)^[I].R = 255) and
+      (PPixelArray(Buffer)^[I].G = 190) and
+      (PPixelArray(Buffer)^[I].B = 80) and
+      (PPixelArray(Buffer)^[I].A = 120) then
+      Inc(CapturedMeasureLinePixels);
   end;
 end;
 
@@ -98,12 +126,28 @@ end;
 
 function TMockMusicData.GetBeatCount: Integer;
 begin
-  Result := 0;
+  Result := 2;
 end;
 
 function TMockMusicData.GetBeat(Index: Integer): TPianoRollBeatData;
 begin
-  raise ERangeError.Create('beat index');
+  FillChar(Result, SizeOf(Result), 0);
+  case Index of
+    0:
+      begin
+        Result.Seconds := 0.5;
+        Result.Index := 0;
+        Result.TempoMicroseconds := 500000;
+      end;
+    1:
+      begin
+        Result.Seconds := 1.0;
+        Result.Index := 1;
+        Result.TempoMicroseconds := 500000;
+      end;
+  else
+    raise ERangeError.Create('beat index');
+  end;
 end;
 
 function TMockMusicData.GetTrackCount: Integer;
@@ -145,6 +189,10 @@ begin
       'note rectangle was not drawn');
     Check(CapturedWhiteKeyPixels > 0, 'white keys were not drawn');
     Check(CapturedBlackKeyPixels > 0, 'black keys were not drawn');
+    Check(CapturedWhiteLanePixels > 0, 'white lanes were not drawn');
+    Check(CapturedBlackLanePixels > 0, 'black lanes were not drawn');
+    Check(CapturedBeatLinePixels > 0, 'beat line was not drawn');
+    Check(CapturedMeasureLinePixels > 0, 'measure line was not drawn');
 
     ObjectInfo.Width := 320;
     ObjectInfo.Height := 180;

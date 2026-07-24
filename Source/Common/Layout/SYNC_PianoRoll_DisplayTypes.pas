@@ -19,6 +19,9 @@ type
     KeyLength: Double;        // 鍵盤が伸びる方向の長さ。
     KeyThickness: Double;     // 1鍵の音階方向の太さ。
     NoteThickness: Double;    // 音階方向レーンに対するノートの占有率。
+    ShowLanes: Boolean;       // 白鍵・黒鍵に対応するレーン背景を表示する。
+    ShowBeatLines: Boolean;   // 拍線と小節線を表示する。
+    BeatsPerMeasure: Integer; // 1小節として強調する拍数。
   end;
 
   IPianoRollDisplay = interface
@@ -45,6 +48,9 @@ begin
   Settings.KeyLength := 60.0;
   Settings.KeyThickness := 20.0;
   Settings.NoteThickness := 0.80;
+  Settings.ShowLanes := True;
+  Settings.ShowBeatLines := True;
+  Settings.BeatsPerMeasure := 4;
 end;
 
 end.

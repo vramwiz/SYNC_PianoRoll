@@ -18,6 +18,35 @@ type
   end;
   PFileItem = ^TFileItem;
 
+  TTrackItem = record
+    ItemType: PWideChar;
+    Name: PWideChar;
+    Value, S, E, Step: Double;
+  end;
+  PTrackItem = ^TTrackItem;
+
+  TSelectListItem = record
+    Name: PWideChar;
+    Value: Integer;
+  end;
+  PSelectListItem = ^TSelectListItem;
+  TSelectListArray = array[0..2] of TSelectListItem;
+  PSelectListArray = ^TSelectListArray;
+
+  TSelectItem = record
+    ItemType: PWideChar;
+    Name: PWideChar;
+    Value: Integer;
+    List: PSelectListItem;
+  end;
+  PSelectItem = ^TSelectItem;
+
+  TItemHeader = record
+    ItemType: PWideChar;
+    Name: PWideChar;
+  end;
+  PItemHeader = ^TItemHeader;
+
   TPluginTable = record
     Flag: Integer;
     Name, Label_, Information: PWideChar;
@@ -26,12 +55,13 @@ type
   end;
   PPluginTable = ^TPluginTable;
 
-  TItemArray = array[0..1] of Pointer;
+  TItemArray = array[0..13] of Pointer;
   PItemArray = ^TItemArray;
 
 var
   FileItem: PFileItem;
   GetTable: TGetFilterPluginTable;
+  I: Integer;
   Items: PItemArray;
   ModuleHandle: HMODULE;
   Table: PPluginTable;
@@ -54,13 +84,53 @@ begin
       raise Exception.Create('plugin name mismatch');
 
     Items := PItemArray(Table^.Items);
-    if (Items = nil) or (Items^[0] = nil) or (Items^[1] <> nil) then
+    if Items = nil then
+      raise Exception.Create('plugin items are nil');
+    for I := 0 to 12 do
+      if Items^[I] = nil then
+        raise Exception.CreateFmt('plugin item %d is nil', [I]);
+    if Items^[13] <> nil then
       raise Exception.Create('plugin items are not terminated');
     FileItem := PFileItem(Items^[0]);
     if string(FileItem^.ItemType) <> 'file' then
       raise Exception.Create('music file item type mismatch');
     if string(FileItem^.Name) <> '音楽ファイル' then
       raise Exception.Create('music file item name mismatch');
+
+    if (string(PItemHeader(Items^[1])^.ItemType) <> 'track') or
+      (string(PItemHeader(Items^[1])^.Name) <> '表示時間 (秒)') or
+      (PTrackItem(Items^[1])^.Value <> 4.0) then
+      raise Exception.Create('display time item mismatch');
+    if string(PItemHeader(Items^[2])^.Name) <> '発音位置 (%)' then
+      raise Exception.Create('strike position item mismatch');
+    if string(PItemHeader(Items^[3])^.Name) <> 'ずらし (秒)' then
+      raise Exception.Create('time shift item mismatch');
+    if string(PItemHeader(Items^[4])^.Name) <> '最低音' then
+      raise Exception.Create('lowest key item mismatch');
+    if string(PItemHeader(Items^[5])^.Name) <> '最高音' then
+      raise Exception.Create('highest key item mismatch');
+    if (string(PItemHeader(Items^[6])^.ItemType) <> 'select') or
+      (string(PItemHeader(Items^[6])^.Name) <> '音域') then
+      raise Exception.Create('auto key range item mismatch');
+    if string(PItemHeader(Items^[7])^.Name) <> '鍵盤の長さ' then
+      raise Exception.Create('key length item mismatch');
+    if string(PItemHeader(Items^[8])^.Name) <> '鍵盤の太さ' then
+      raise Exception.Create('key thickness item mismatch');
+    if string(PItemHeader(Items^[9])^.Name) <> 'ノート太さ (%)' then
+      raise Exception.Create('note thickness item mismatch');
+    if string(PItemHeader(Items^[10])^.Name) <> 'レーン表示' then
+      raise Exception.Create('lane visibility item mismatch');
+    if string(PItemHeader(Items^[11])^.Name) <> '拍線表示' then
+      raise Exception.Create('beat visibility item mismatch');
+    if string(PItemHeader(Items^[12])^.Name) <> '1小節の拍数' then
+      raise Exception.Create('beats per measure item mismatch');
+
+    if (PSelectItem(Items^[6])^.List = nil) or
+      (PSelectListArray(PSelectItem(Items^[6])^.List)^[2].Name <> nil) then
+      raise Exception.Create('key range select list is not terminated');
+    if (PSelectItem(Items^[10])^.List = nil) or
+      (PSelectListArray(PSelectItem(Items^[10])^.List)^[2].Name <> nil) then
+      raise Exception.Create('visibility select list is not terminated');
     Writeln('PASS');
   finally
     FreeLibrary(ModuleHandle);

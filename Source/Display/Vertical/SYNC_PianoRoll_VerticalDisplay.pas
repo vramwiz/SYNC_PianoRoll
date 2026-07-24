@@ -21,7 +21,13 @@ uses
 type
   TVerticalPianoRollDisplay = class(TInterfacedObject, IPianoRollDisplay)
   private
+    procedure DrawBeatLines(var Canvas: TPianoRollCanvas;
+      const Data: IPianoRollMusicData; TimeSeconds, PixelsPerSecond: Double;
+      StrikePosition: Integer; const Settings: TPianoRollDisplaySettings);
     procedure DrawKeyboard(var Canvas: TPianoRollCanvas;
+      StrikePosition, LowestKey, HighestKey: Integer;
+      const Settings: TPianoRollDisplaySettings);
+    procedure DrawLanes(var Canvas: TPianoRollCanvas;
       StrikePosition, LowestKey, HighestKey: Integer;
       const Settings: TPianoRollDisplaySettings);
     procedure GetKeyAxisBounds(CanvasWidth, MidiKey, LowestKey,
@@ -54,6 +60,41 @@ begin
   else
     Result := PianoRollColor(255, 145, 75, 255);
   end;
+  end;
+
+procedure TVerticalPianoRollDisplay.DrawBeatLines(
+  var Canvas: TPianoRollCanvas; const Data: IPianoRollMusicData;
+  TimeSeconds, PixelsPerSecond: Double; StrikePosition: Integer;
+  const Settings: TPianoRollDisplaySettings);
+var
+  Beat: TPianoRollBeatData;
+  BeatPosition, I, LineThickness, MeasureLength: Integer;
+  LineColor: TPianoRollColor;
+begin
+  if not Settings.ShowBeatLines then
+    Exit;
+  MeasureLength := Max(1, Settings.BeatsPerMeasure);
+  for I := 0 to Data.BeatCount - 1 do
+  begin
+    Beat := Data.Beats[I];
+    BeatPosition := StrikePosition -
+      Round((Beat.Seconds - TimeSeconds) * PixelsPerSecond);
+    if (BeatPosition < 0) or (BeatPosition >= StrikePosition) then
+      Continue;
+
+    if (Beat.Index mod MeasureLength) = 0 then
+    begin
+      LineColor := PianoRollColor(255, 190, 80, 120);
+      LineThickness := 2;
+    end
+    else
+    begin
+      LineColor := PianoRollColor(255, 255, 255, 48);
+      LineThickness := 1;
+    end;
+    Canvas.FillRectangle(0, BeatPosition, Canvas.Width,
+      BeatPosition + LineThickness, LineColor);
+  end;
 end;
 
 procedure TVerticalPianoRollDisplay.GetKeyAxisBounds(CanvasWidth, MidiKey,
@@ -76,6 +117,35 @@ begin
   EndPosition := Round(AxisCenter + VisibleThickness * 0.5);
   if EndPosition <= StartPosition then
     EndPosition := StartPosition + 1;
+end;
+
+procedure TVerticalPianoRollDisplay.DrawLanes(
+  var Canvas: TPianoRollCanvas; StrikePosition, LowestKey,
+  HighestKey: Integer; const Settings: TPianoRollDisplaySettings);
+var
+  EndPosition, Key, StartPosition: Integer;
+begin
+  if not Settings.ShowLanes then
+    Exit;
+
+  // 白鍵レーンを敷き、黒鍵レーンを白鍵の境界へ重ねる。
+  for Key := LowestKey to HighestKey do
+    if not IsPianoBlackKey(Key) then
+    begin
+      GetKeyAxisBounds(Canvas.Width, Key, LowestKey, HighestKey,
+        Settings.KeyThickness, StartPosition, EndPosition);
+      Canvas.FillRectangle(StartPosition, 0, EndPosition, StrikePosition,
+        PianoRollColor(238, 238, 242, 28));
+    end;
+
+  for Key := LowestKey to HighestKey do
+    if IsPianoBlackKey(Key) then
+    begin
+      GetKeyAxisBounds(Canvas.Width, Key, LowestKey, HighestKey,
+        Settings.KeyThickness, StartPosition, EndPosition);
+      Canvas.FillRectangle(StartPosition, 0, EndPosition, StrikePosition,
+        PianoRollColor(110, 110, 120, 24));
+    end;
 end;
 
 procedure TVerticalPianoRollDisplay.ResolveKeyRange(
@@ -161,15 +231,22 @@ begin
   ResolveKeyRange(Data, Settings, LowestKey, HighestKey);
   StrikePosition := EnsureRange(
     Round(Canvas.Height * Settings.StrikePosition), 0, Canvas.Height - 1);
+  DrawLanes(Canvas, StrikePosition, LowestKey, HighestKey, Settings);
+  TimeSeconds := TimeSeconds - Settings.TimeShift;
+  PixelsPerSecond := 0.0;
+  if Settings.DisplayTime > 0 then
+  begin
+    PixelsPerSecond := Max(1, StrikePosition) / Settings.DisplayTime;
+    DrawBeatLines(Canvas, Data, TimeSeconds, PixelsPerSecond,
+      StrikePosition, Settings);
+  end;
   DrawKeyboard(Canvas, StrikePosition, LowestKey, HighestKey, Settings);
   Canvas.FillRectangle(0, StrikePosition, Canvas.Width, StrikePosition + 2,
     PianoRollColor(255, 255, 255, 160));
 
   if Settings.DisplayTime <= 0 then
     Exit;
-  PixelsPerSecond := Max(1, StrikePosition) / Settings.DisplayTime;
   Thickness := EnsureRange(Settings.NoteThickness, 0.05, 1.0);
-  TimeSeconds := TimeSeconds - Settings.TimeShift;
 
   for I := 0 to Data.NoteCount - 1 do
   begin
