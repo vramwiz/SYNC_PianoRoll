@@ -82,9 +82,32 @@
         </DelphiCompile>
         <DCCReference Include="Source\Lib\AviUtl2FilterTypes.pas"/>
         <DCCReference Include="Source\Lib\SharedMemoryBase.pas"/>
-        <DCCReference Include="Source\Lib\SYNC_PianoRoll_FrameShared.pas"/>
-        <DCCReference Include="Source\SYNC_PianoRoll_ContextManager.pas"/>
-        <DCCReference Include="Source\SYNC_PianoRoll_FilterPlugin.pas"/>
+        <DCCReference Include="Source\Common\Timeline\SYNC_PianoRoll_FrameShared.pas"/>
+        <DCCReference Include="Source\Lib\SongReader\RTTIPersistent.pas"/>
+        <DCCReference Include="Source\Lib\SongReader\RTTIPersistentIni.pas"/>
+        <DCCReference Include="Source\Lib\SongReader\SectionFileManager.pas"/>
+        <DCCReference Include="Source\Lib\SongReader\TextEncodingUtils.pas"/>
+        <DCCReference Include="Source\Lib\SongReader\SongAIUEO.pas"/>
+        <DCCReference Include="Source\Lib\SongReader\SongDataInfo.pas"/>
+        <DCCReference Include="Source\Lib\SongReader\SongDataNote.pas"/>
+        <DCCReference Include="Source\Lib\SongReader\SongDataTempo.pas"/>
+        <DCCReference Include="Source\Lib\SongReader\SongDataTrack.pas"/>
+        <DCCReference Include="Source\Lib\SongReader\SongData.pas"/>
+        <DCCReference Include="Source\Lib\SongReader\SongReader.pas"/>
+        <DCCReference Include="Source\Lib\SongReader\SongReaderSMF.pas"/>
+        <DCCReference Include="Source\Lib\SongReader\SongReaderUST.pas"/>
+        <DCCReference Include="Source\Lib\SongReader\SongReaderVSQX.pas"/>
+        <DCCReference Include="Source\Lib\SongReader\SongReaderMusicXML.pas"/>
+        <DCCReference Include="Source\Lib\SongReader\SongReaderMusicMSC.pas"/>
+        <DCCReference Include="Source\Lib\SongReader\SongReaderMusicMSCZ.pas"/>
+        <DCCReference Include="Source\Lib\SongReader\SongReaderManager.pas"/>
+        <DCCReference Include="Source\Common\Timeline\SYNC_PianoRoll_ContextManager.pas"/>
+        <DCCReference Include="Source\Common\Data\SYNC_PianoRoll_MusicData.pas"/>
+        <DCCReference Include="Source\Common\Render\SYNC_PianoRoll_RGBA.pas"/>
+        <DCCReference Include="Source\Common\Layout\SYNC_PianoRoll_DisplayTypes.pas"/>
+        <DCCReference Include="Source\Display\Vertical\SYNC_PianoRoll_VerticalDisplay.pas"/>
+        <DCCReference Include="Source\Common\Render\SYNC_PianoRoll_Renderer.pas"/>
+        <DCCReference Include="Source\Plugin\Filter\SYNC_PianoRoll_FilterPlugin.pas"/>
         <BuildConfiguration Include="Debug">
             <Key>Cfg_1</Key>
         </BuildConfiguration>

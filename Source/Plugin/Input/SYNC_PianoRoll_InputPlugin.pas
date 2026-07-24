@@ -1,6 +1,6 @@
 ﻿unit SYNC_PianoRoll_InputPlugin;
 
-// 透明映像を返し、将来のピアノロール描画に使う時刻ベースを提供する。
+// Input登録から呼ばれ、透明映像とピアノロール描画用の時刻ベースを提供する。
 
 interface
 

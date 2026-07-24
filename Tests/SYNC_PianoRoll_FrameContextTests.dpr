@@ -9,8 +9,8 @@ uses
   System.SysUtils,
   AviUtl2FilterTypes in 'Source\Lib\AviUtl2FilterTypes.pas',
   SharedMemoryBase in 'Source\Lib\SharedMemoryBase.pas',
-  SYNC_PianoRoll_FrameShared in 'Source\Lib\SYNC_PianoRoll_FrameShared.pas',
-  SYNC_PianoRoll_ContextManager in 'Source\SYNC_PianoRoll_ContextManager.pas';
+  SYNC_PianoRoll_FrameShared in 'Source\Common\Timeline\SYNC_PianoRoll_FrameShared.pas',
+  SYNC_PianoRoll_ContextManager in 'Source\Common\Timeline\SYNC_PianoRoll_ContextManager.pas';
 
 procedure Check(Condition: Boolean; const MessageText: string);
 begin

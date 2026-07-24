@@ -6,8 +6,8 @@ uses
   Winapi.Windows,
   AviUtl2InputTypes in 'Source\Lib\AviUtl2InputTypes.pas',
   SharedMemoryBase in 'Source\Lib\SharedMemoryBase.pas',
-  SYNC_PianoRoll_FrameShared in 'Source\Lib\SYNC_PianoRoll_FrameShared.pas',
-  SYNC_PianoRoll_InputPlugin in 'Source\SYNC_PianoRoll_InputPlugin.pas';
+  SYNC_PianoRoll_FrameShared in 'Source\Common\Timeline\SYNC_PianoRoll_FrameShared.pas',
+  SYNC_PianoRoll_InputPlugin in 'Source\Plugin\Input\SYNC_PianoRoll_InputPlugin.pas';
 
 function func_open(FileName: LPCWSTR): INPUT_HANDLE; cdecl;
 begin

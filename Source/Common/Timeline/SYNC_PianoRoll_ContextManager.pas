@@ -1,6 +1,6 @@
 ﻿unit SYNC_PianoRoll_ContextManager;
 
-// Object ID + Effect ID ごとに共有フレームとFilterローカルフレームの基準を保持する。
+// 表示タイプに依存せず、Object ID + Effect ID ごとの時刻基準を保持する。
 
 interface
 

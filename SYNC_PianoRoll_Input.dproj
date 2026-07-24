@@ -9,22 +9,7 @@
         <TargetedPlatforms>2</TargetedPlatforms>
         <AppType>Library</AppType>
         <MainSource>SYNC_PianoRoll_Input.dpr</MainSource>
-    </PropertyGroup>
-    <PropertyGroup Condition="'$(Config)'=='Debug' or '$(Cfg_1)'!=''">
-        <Cfg_1>true</Cfg_1>
-    </PropertyGroup>
-    <PropertyGroup Condition="('$(Platform)'=='Win64' and '$(Cfg_1)'=='true') or '$(Cfg_1_Win64)'!=''">
-        <Cfg_1_Win64>true</Cfg_1_Win64>
-        <CfgParent>Cfg_1</CfgParent>
-        <Cfg_1>true</Cfg_1>
-    </PropertyGroup>
-    <PropertyGroup Condition="'$(Config)'=='Release' or '$(Cfg_2)'!=''">
-        <Cfg_2>true</Cfg_2>
-    </PropertyGroup>
-    <PropertyGroup Condition="('$(Platform)'=='Win64' and '$(Cfg_2)'=='true') or '$(Cfg_2_Win64)'!=''">
-        <Cfg_2_Win64>true</Cfg_2_Win64>
-        <CfgParent>Cfg_2</CfgParent>
-        <Cfg_2>true</Cfg_2>
+        <Base>True</Base>
     </PropertyGroup>
     <PropertyGroup>
         <GenDll>true</GenDll>
@@ -38,13 +23,34 @@
         <DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;$(DCC_Namespace)</DCC_Namespace>
         <SanitizedProjectName>SYNC_PianoRoll_Input</SanitizedProjectName>
     </PropertyGroup>
-    <PropertyGroup Condition="'$(Platform)'=='Win64'">
-        <DCC_Namespace>Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;$(DCC_Namespace)</DCC_Namespace>
-        <BT_BuildType>Debug</BT_BuildType>
-        <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
-        <VerInfo_Keys>CompanyName=;FileDescription=SYNC_PianoRoll_Input;FileVersion=0.1.0.0;InternalName=SYNC_PianoRoll_Input;LegalCopyright=;LegalTrademarks=;OriginalFilename=SYNC_PianoRoll_Input.aui2;ProgramID=com.vramwiz.sync.pianoroll.input;ProductName=SYNC PianoRoll;ProductVersion=0.1.0.0;Comments=AviUtl2 input plugin for SYNC PianoRoll</VerInfo_Keys>
-        <VerInfo_Locale>1041</VerInfo_Locale>
-        <Debugger_HostApplication>D:\aviutl2_v2.1.0\aviutl2.exe</Debugger_HostApplication>
+    <PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
+        <Base>true</Base>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Config)'=='Debug' or '$(Cfg_1)'!=''">
+        <Cfg_1>true</Cfg_1>
+        <CfgParent>Base</CfgParent>
+        <Base>true</Base>
+    </PropertyGroup>
+    <PropertyGroup Condition="('$(Platform)'=='Win64' and '$(Cfg_1)'=='true') or '$(Cfg_1_Win64)'!=''">
+        <Cfg_1_Win64>true</Cfg_1_Win64>
+        <CfgParent>Cfg_1</CfgParent>
+        <Cfg_1>true</Cfg_1>
+        <Base>true</Base>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Config)'=='Release' or '$(Cfg_2)'!=''">
+        <Cfg_2>true</Cfg_2>
+        <CfgParent>Base</CfgParent>
+        <Base>true</Base>
+    </PropertyGroup>
+    <PropertyGroup Condition="('$(Platform)'=='Win64' and '$(Cfg_2)'=='true') or '$(Cfg_2_Win64)'!=''">
+        <Cfg_2_Win64>true</Cfg_2_Win64>
+        <CfgParent>Cfg_2</CfgParent>
+        <Cfg_2>true</Cfg_2>
+        <Base>true</Base>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Base)'!=''">
+        <GenDll>true</GenDll>
+        <SanitizedProjectName>SYNC_PianoRoll_Input</SanitizedProjectName>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1)'!=''">
         <BT_BuildType>Debug</BT_BuildType>
@@ -55,9 +61,9 @@
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1_Win64)'!=''">
         <DCC_ExeOutput>C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll</DCC_ExeOutput>
-        <PreBuildEvent>if not exist &quot;C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll&quot; mkdir &quot;C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll&quot;</PreBuildEvent>
+        <PreBuildEvent><![CDATA[if not exist "C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll" mkdir "C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll"]]></PreBuildEvent>
         <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
-        <PostBuildEvent>copy /Y &quot;C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll\$(PROJECTNAME).dll&quot; &quot;C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll\$(PROJECTNAME).aui2&quot;</PostBuildEvent>
+        <PostBuildEvent><![CDATA[copy /Y "C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll\$(PROJECTNAME).dll" "C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll\$(PROJECTNAME).aui2"]]></PostBuildEvent>
         <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2)'!=''">
@@ -69,24 +75,30 @@
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2_Win64)'!=''">
         <DCC_ExeOutput>C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll</DCC_ExeOutput>
-        <PreBuildEvent>if not exist &quot;C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll&quot; mkdir &quot;C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll&quot;</PreBuildEvent>
+        <PreBuildEvent><![CDATA[if not exist "C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll" mkdir "C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll"]]></PreBuildEvent>
         <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
-        <PostBuildEvent>copy /Y &quot;C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll\$(PROJECTNAME).dll&quot; &quot;C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll\$(PROJECTNAME).aui2&quot;&amp;&amp;if exist &quot;C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll\$(PROJECTNAME).dll&quot; del /Q &quot;C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll\$(PROJECTNAME).dll&quot;&amp;&amp;if exist &quot;C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll\$(PROJECTNAME).rsm&quot; del /Q &quot;C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll\$(PROJECTNAME).rsm&quot;</PostBuildEvent>
+        <PostBuildEvent><![CDATA[copy /Y "C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll\$(PROJECTNAME).dll" "C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll\$(PROJECTNAME).aui2"&&if exist "C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll\$(PROJECTNAME).dll" del /Q "C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll\$(PROJECTNAME).dll"&&if exist "C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll\$(PROJECTNAME).rsm" del /Q "C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll\$(PROJECTNAME).rsm"]]></PostBuildEvent>
         <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
+        <Debugger_HostApplication>D:\aviutl2_v2.1.0\aviutl2.exe</Debugger_HostApplication>
     </PropertyGroup>
     <ItemGroup>
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
-        <DCCReference Include="Source\SYNC_PianoRoll_InputPlugin.pas"/>
         <DCCReference Include="Source\Lib\AviUtl2InputTypes.pas"/>
         <DCCReference Include="Source\Lib\SharedMemoryBase.pas"/>
-        <DCCReference Include="Source\Lib\SYNC_PianoRoll_FrameShared.pas"/>
+        <DCCReference Include="Source\Common\Timeline\SYNC_PianoRoll_FrameShared.pas"/>
+        <DCCReference Include="Source\Plugin\Input\SYNC_PianoRoll_InputPlugin.pas"/>
+        <BuildConfiguration Include="Base">
+            <Key>Base</Key>
+        </BuildConfiguration>
         <BuildConfiguration Include="Debug">
             <Key>Cfg_1</Key>
+            <CfgParent>Base</CfgParent>
         </BuildConfiguration>
         <BuildConfiguration Include="Release">
             <Key>Cfg_2</Key>
+            <CfgParent>Base</CfgParent>
         </BuildConfiguration>
     </ItemGroup>
     <ProjectExtensions>
@@ -108,4 +120,20 @@
     <Import Project="$(BDS)\Bin\CodeGear.Delphi.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Delphi.Targets')"/>
     <Import Project="$(APPDATA)\Embarcadero\$(BDSAPPDATABASEDIR)\$(PRODUCTVERSION)\UserTools.proj" Condition="Exists('$(APPDATA)\Embarcadero\$(BDSAPPDATABASEDIR)\$(PRODUCTVERSION)\UserTools.proj')"/>
     <Import Project="$(MSBuildProjectName).deployproj" Condition="Exists('$(MSBuildProjectName).deployproj')"/>
+    <PropertyGroup Condition="'$(Config)'=='Debug' And '$(Platform)'=='Win64'">
+        <PreBuildEvent>if not exist &quot;C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll&quot; mkdir &quot;C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll&quot;</PreBuildEvent>
+        <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
+        <PreLinkEvent/>
+        <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
+        <PostBuildEvent>copy /Y &quot;C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll\$(PROJECTNAME).dll&quot; &quot;C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll\$(PROJECTNAME).aui2&quot;</PostBuildEvent>
+        <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Config)'=='Release' And '$(Platform)'=='Win64'">
+        <PreBuildEvent>if not exist &quot;C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll&quot; mkdir &quot;C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll&quot;</PreBuildEvent>
+        <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
+        <PreLinkEvent/>
+        <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
+        <PostBuildEvent>copy /Y &quot;C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll\$(PROJECTNAME).dll&quot; &quot;C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll\$(PROJECTNAME).aui2&quot;&amp;&amp;if exist &quot;C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll\$(PROJECTNAME).dll&quot; del /Q &quot;C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll\$(PROJECTNAME).dll&quot;&amp;&amp;if exist &quot;C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll\$(PROJECTNAME).rsm&quot; del /Q &quot;C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll\$(PROJECTNAME).rsm&quot;</PostBuildEvent>
+        <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
+    </PropertyGroup>
 </Project>
