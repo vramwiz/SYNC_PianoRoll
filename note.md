@@ -14,6 +14,7 @@ MIDI等の音楽データを読み、AviUtl2上で鍵盤とノートを音楽へ
 - `Source\Common\Timeline\SYNC_PianoRoll_FrameShared.pas`: InputとFilter間で絶対フレーム、rate、scale、秒位置を共有する。
 - `Source\Common\Timeline\SYNC_PianoRoll_ContextManager.pas`: Object IDとEffect IDごとに共有フレームとローカルフレームの対応を保持する。
 - `Source\Common\Data\SYNC_PianoRoll_MusicData.pas`: 元音楽ファイルの解析結果を描画用の読み取り専用スナップショットとして共有する。
+- `Source\Common\Color\SYNC_PianoRoll_Colors.pas`: RGBA色型、描画共通パレット、トラック6色の初期値を定義する。
 - `Source\Common\Layout\SYNC_PianoRoll_DisplayTypes.pas`: 縦横に依存しない表示設定と表示実装の共通契約を定義する。
 - `Source\Common\Render\SYNC_PianoRoll_RGBA.pas`: 表示タイプに依存しないRGBAキャンバスと矩形描画を提供する。
 - `Source\Common\Render\SYNC_PianoRoll_Renderer.pas`: オブジェクト別描画バッファを管理し、選択された表示実装を呼び出す。
@@ -122,7 +123,8 @@ D:\DelphiProg\test\Syncroh2\Plugin_Extension\Music\PianoRoll
 一方向の依存関係とする。表示タイプ同士は互いを参照しない。
 
 次の構成を基本とする。Input／Filter入口、データ、時刻同期、表示契約、RGBA描画、縦表示は
-2026-07-24にこの構成へ移動済み。`Color`と`Horizontal`は実装を開始した時点で追加する。
+2026-07-24にこの構成へ移動済み。`Color`も共通パレットの実装時に追加済み。
+`Horizontal`は横表示の実装を開始した時点で追加する。
 
 ```text
 Source
@@ -209,10 +211,27 @@ GUIで表示タイプ別の項目を切り替えられない場合も、内部�
 | `レーン表示` | 表示 | 非表示／表示 | `ShowLanes` |
 | `拍線表示` | 表示 | 非表示／表示 | `ShowBeatLines` |
 | `1小節の拍数` | 4 | 1～32 | `BeatsPerMeasure` |
+| `白鍵色` | RGB(242,242,242) | 色 | `Palette.WhiteKey` |
+| `黒鍵色` | RGB(24,24,24) | 色 | `Palette.BlackKey` |
+| `白鍵レーン色` | RGB(238,238,242) | 色 | `Palette.WhiteLane` |
+| `黒鍵レーン色` | RGB(110,110,120) | 色 | `Palette.BlackLane` |
+| `拍線色` | RGB(255,255,255) | 色 | `Palette.BeatLine` |
+| `小節線色` | RGB(255,190,80) | 色 | `Palette.MeasureLine` |
+| `発音線色` | RGB(255,255,255) | 色 | `Palette.StrikeLine` |
 
 各映像コールバックでAviUtl2が保持する項目値をローカルの`TPianoRollDisplaySettings`へコピーし、
 範囲外値を防御的に補正してから表示実装へ渡す。複数オブジェクトの並列描画間で可変設定レコードを
 共有しない。
+
+## 共通カラーパレット
+
+RGBA色型と既定色は`Source\Common\Color\SYNC_PianoRoll_Colors.pas`へ集約する。
+RGBAキャンバス、表示設定、縦表示はこの共通色型を使用し、表示タイプ内へRGB定数を直接記述しない。
+
+GUIへ公開する色は白鍵、黒鍵、白鍵／黒鍵レーン、拍線、小節線、発音線の7項目とする。
+鍵盤境界色とトラック番号別の6色も共通パレットで管理するが、項目数を抑えるため現時点ではGUIへ
+公開しない。色項目はAviUtl2 SDKの`B,G,R,X`配置で保持するが、`X`は予約領域であるため
+描画アルファには使わない。GUIからRGBだけを取得し、レーンや線の透明度は共通パレットの既定値を維持する。
 
 ## 音楽ファイル解析とキャッシュ
 
@@ -301,10 +320,10 @@ cmd /c "call ""C:\Program Files (x86)\Embarcadero\Studio\37.0\bin\rsvars.bat"" &
 
 ## 次の実装候補
 
-1. レーン、拍線、鍵盤、ノートの色定義を共通配色ユニットへ分離する。
-2. 必要な色だけをFilterのGUI項目へ接続する。
-3. 縦表示の描画順、音域自動、極端な設定値を実機上で確認する。
-4. 縦表示の完成後、独立した横表示実装と専用テストを追加する。
+1. 縦表示の描画順、音域自動、極端な設定値を実機上で確認する。
+2. トラック色の扱いを固定6色、単色、将来の配色方式から選べる設計にする。
+3. 表示タイプ選択の共通入口をFilterへ追加する。
+4. 独立した横表示実装と専用テストを追加する。
 
 ## 作業ログ
 
@@ -358,3 +377,11 @@ cmd /c "call ""C:\Program Files (x86)\Embarcadero\Studio\37.0\bin\rsvars.bat"" &
   項目配列と選択肢配列のnil終端を確認した。
 - 2026-07-24: GUI接続後も全5テストがPASSした。Input／FilterのDebug・Release Win64は
   全4構成でビルド成功し、Debugフィルターは警告0・エラー0、Releaseの`.auf2`もロード成功を確認した。
+- 2026-07-24: RGBA色型、鍵盤、レーン、拍線、小節線、発音線、トラック6色を
+  `Source\Common\Color\SYNC_PianoRoll_Colors.pas`の共通パレットへ分離した。
+- 2026-07-24: 白鍵色、黒鍵色、白鍵／黒鍵レーン色、拍線色、小節線色、発音線色の7項目を
+  Filter GUIへ追加した。登録表テストでSDKのBGRX配置と予約領域の初期値を確認し、
+  描画テストで任意RGBA色が白鍵へ反映されることを確認した。
+- 2026-07-24: 共通パレットとGUI色接続後も全5テストがPASSした。Input／Filterの
+  Debug・Release Win64は全4構成でビルド成功し、Debugフィルターは警告0・エラー0、
+  Releaseの`.auf2`もロード成功を確認した。

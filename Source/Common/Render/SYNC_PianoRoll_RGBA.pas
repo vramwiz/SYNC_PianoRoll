@@ -5,13 +5,10 @@
 interface
 
 uses
-  AviUtl2FilterTypes;
+  AviUtl2FilterTypes,
+  SYNC_PianoRoll_Colors;
 
 type
-  TPianoRollColor = record
-    R, G, B, A: Byte;
-  end;
-
   TPianoRollCanvas = record
   private
     FBuffer: PPIXEL_RGBA;
@@ -26,8 +23,6 @@ type
     property Height: Integer read FHeight;
   end;
 
-function PianoRollColor(R, G, B, A: Byte): TPianoRollColor;
-
 implementation
 
 uses
@@ -36,14 +31,6 @@ uses
 type
   TPixelArray = array[0..(MaxInt div SizeOf(TPIXEL_RGBA)) - 1] of TPIXEL_RGBA;
   PPixelArray = ^TPixelArray;
-
-function PianoRollColor(R, G, B, A: Byte): TPianoRollColor;
-begin
-  Result.R := R;
-  Result.G := G;
-  Result.B := B;
-  Result.A := A;
-end;
 
 procedure TPianoRollCanvas.Initialize(Buffer: PPIXEL_RGBA;
   Width, Height: Integer);

@@ -6,6 +6,7 @@ interface
 
 uses
   SYNC_PianoRoll_MusicData,
+  SYNC_PianoRoll_Colors,
   SYNC_PianoRoll_RGBA;
 
 type
@@ -22,6 +23,7 @@ type
     ShowLanes: Boolean;       // 白鍵・黒鍵に対応するレーン背景を表示する。
     ShowBeatLines: Boolean;   // 拍線と小節線を表示する。
     BeatsPerMeasure: Integer; // 1小節として強調する拍数。
+    Palette: TPianoRollPalette;
   end;
 
   IPianoRollDisplay = interface
@@ -51,6 +53,7 @@ begin
   Settings.ShowLanes := True;
   Settings.ShowBeatLines := True;
   Settings.BeatsPerMeasure := 4;
+  SetDefaultPianoRollPalette(Settings.Palette);
 end;
 
 end.

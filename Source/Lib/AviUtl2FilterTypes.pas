@@ -80,6 +80,14 @@ type
     List    : ^TFILTER_ITEM_SELECT_ITEM; // nil終端された選択肢配列。
   end;
 
+  // SDK配置はB,G,R,X。Xは予約領域であり、描画アルファには使用しない。
+  PFILTER_ITEM_COLOR = ^TFILTER_ITEM_COLOR;
+  TFILTER_ITEM_COLOR = record
+    ItemType: LPCWSTR; // SDK項目種別の固定値 `color`。
+    Name: LPCWSTR;     // GUI表示名兼、設定取得時の項目識別名。
+    B, G, R, X: Byte;  // 青、緑、赤、予約領域。
+  end;
+
   // AviUtl2が選択したファイルパスをValueへ保持するファイル選択項目。
   PFILTER_ITEM_FILE = ^TFILTER_ITEM_FILE;
   TFILTER_ITEM_FILE = record

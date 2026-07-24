@@ -9,6 +9,7 @@ uses
   AviUtl2FilterTypes in 'Source\Lib\AviUtl2FilterTypes.pas',
   SYNC_PianoRoll_MusicData in 'Source\Common\Data\SYNC_PianoRoll_MusicData.pas',
   SYNC_PianoRoll_PianoKeys in 'Source\Common\Data\SYNC_PianoRoll_PianoKeys.pas',
+  SYNC_PianoRoll_Colors in 'Source\Common\Color\SYNC_PianoRoll_Colors.pas',
   SYNC_PianoRoll_RGBA in 'Source\Common\Render\SYNC_PianoRoll_RGBA.pas',
   SYNC_PianoRoll_DisplayTypes in 'Source\Common\Layout\SYNC_PianoRoll_DisplayTypes.pas',
   SYNC_PianoRoll_VerticalDisplay in 'Source\Display\Vertical\SYNC_PianoRoll_VerticalDisplay.pas',
@@ -31,6 +32,7 @@ var
   CapturedBlackKeyPixels: Integer;
   CapturedBlackLanePixels: Integer;
   CapturedBeatLinePixels: Integer;
+  CapturedCustomWhiteKeyPixels: Integer;
   CapturedHeight: Integer;
   CapturedMeasureLinePixels: Integer;
   CapturedOpaquePixels: Integer;
@@ -57,6 +59,7 @@ begin
   CapturedBlackKeyPixels := 0;
   CapturedBlackLanePixels := 0;
   CapturedBeatLinePixels := 0;
+  CapturedCustomWhiteKeyPixels := 0;
   CapturedMeasureLinePixels := 0;
   CapturedWhiteKeyPixels := 0;
   CapturedWhiteLanePixels := 0;
@@ -94,6 +97,11 @@ begin
       (PPixelArray(Buffer)^[I].B = 80) and
       (PPixelArray(Buffer)^[I].A = 120) then
       Inc(CapturedMeasureLinePixels);
+    if (PPixelArray(Buffer)^[I].R = 12) and
+      (PPixelArray(Buffer)^[I].G = 34) and
+      (PPixelArray(Buffer)^[I].B = 56) and
+      (PPixelArray(Buffer)^[I].A = 201) then
+      Inc(CapturedCustomWhiteKeyPixels);
   end;
 end;
 
@@ -193,6 +201,12 @@ begin
     Check(CapturedBlackLanePixels > 0, 'black lanes were not drawn');
     Check(CapturedBeatLinePixels > 0, 'beat line was not drawn');
     Check(CapturedMeasureLinePixels > 0, 'measure line was not drawn');
+
+    Settings.Palette.WhiteKey := PianoRollColor(12, 34, 56, 201);
+    Check(RenderPianoRoll(@Video, Data, 0.0, Display, Settings),
+      'custom palette render failed');
+    Check(CapturedCustomWhiteKeyPixels > 0,
+      'custom white key color was not applied');
 
     ObjectInfo.Width := 320;
     ObjectInfo.Height := 180;

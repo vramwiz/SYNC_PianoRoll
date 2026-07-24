@@ -14,6 +14,7 @@ implementation
 uses
   System.Math,
   System.SysUtils,
+  SYNC_PianoRoll_Colors,
   SYNC_PianoRoll_MusicData,
   SYNC_PianoRoll_PianoKeys,
   SYNC_PianoRoll_RGBA;
@@ -33,7 +34,8 @@ type
     procedure GetKeyAxisBounds(CanvasWidth, MidiKey, LowestKey,
       HighestKey: Integer; KeyThickness: Double;
       out StartPosition, EndPosition: Integer);
-    function GetTrackColor(TrackIndex: Integer): TPianoRollColor;
+    function GetTrackColor(TrackIndex: Integer;
+      const Palette: TPianoRollPalette): TPianoRollColor;
     procedure ResolveKeyRange(const Data: IPianoRollMusicData;
       const Settings: TPianoRollDisplaySettings;
       out LowestKey, HighestKey: Integer);
@@ -44,22 +46,14 @@ type
   end;
 
 function TVerticalPianoRollDisplay.GetTrackColor(
-  TrackIndex: Integer): TPianoRollColor;
+  TrackIndex: Integer; const Palette: TPianoRollPalette): TPianoRollColor;
 var
   ColorIndex: Integer;
 begin
   ColorIndex := TrackIndex mod 6;
   if ColorIndex < 0 then
     Inc(ColorIndex, 6);
-  case ColorIndex of
-    0: Result := PianoRollColor(80, 210, 255, 255);
-    1: Result := PianoRollColor(255, 120, 180, 255);
-    2: Result := PianoRollColor(120, 235, 140, 255);
-    3: Result := PianoRollColor(255, 205, 80, 255);
-    4: Result := PianoRollColor(175, 130, 255, 255);
-  else
-    Result := PianoRollColor(255, 145, 75, 255);
-  end;
+  Result := Palette.TrackColors[ColorIndex];
   end;
 
 procedure TVerticalPianoRollDisplay.DrawBeatLines(
@@ -84,12 +78,12 @@ begin
 
     if (Beat.Index mod MeasureLength) = 0 then
     begin
-      LineColor := PianoRollColor(255, 190, 80, 120);
+      LineColor := Settings.Palette.MeasureLine;
       LineThickness := 2;
     end
     else
     begin
-      LineColor := PianoRollColor(255, 255, 255, 48);
+      LineColor := Settings.Palette.BeatLine;
       LineThickness := 1;
     end;
     Canvas.FillRectangle(0, BeatPosition, Canvas.Width,
@@ -135,7 +129,7 @@ begin
       GetKeyAxisBounds(Canvas.Width, Key, LowestKey, HighestKey,
         Settings.KeyThickness, StartPosition, EndPosition);
       Canvas.FillRectangle(StartPosition, 0, EndPosition, StrikePosition,
-        PianoRollColor(238, 238, 242, 28));
+        Settings.Palette.WhiteLane);
     end;
 
   for Key := LowestKey to HighestKey do
@@ -144,7 +138,7 @@ begin
       GetKeyAxisBounds(Canvas.Width, Key, LowestKey, HighestKey,
         Settings.KeyThickness, StartPosition, EndPosition);
       Canvas.FillRectangle(StartPosition, 0, EndPosition, StrikePosition,
-        PianoRollColor(110, 110, 120, 24));
+        Settings.Palette.BlackLane);
     end;
 end;
 
@@ -197,9 +191,9 @@ begin
       GetKeyAxisBounds(Canvas.Width, Key, LowestKey, HighestKey,
         Settings.KeyThickness, StartPosition, EndPosition);
       Canvas.FillRectangle(StartPosition, KeyboardTop, EndPosition,
-        KeyboardBottom, PianoRollColor(242, 242, 242, 255));
+        KeyboardBottom, Settings.Palette.WhiteKey);
       Canvas.FillRectangle(StartPosition, KeyboardTop, StartPosition + 1,
-        KeyboardBottom, PianoRollColor(72, 72, 72, 255));
+        KeyboardBottom, Settings.Palette.KeyBorder);
     end;
 
   // 黒鍵は白鍵の上へ重ねる。
@@ -210,7 +204,7 @@ begin
         Settings.KeyThickness, StartPosition, EndPosition);
       Canvas.FillRectangle(StartPosition, KeyboardTop, EndPosition,
         KeyboardTop + Round(Settings.KeyLength * 0.62),
-        PianoRollColor(24, 24, 24, 255));
+        Settings.Palette.BlackKey);
     end;
 end;
 
@@ -242,7 +236,7 @@ begin
   end;
   DrawKeyboard(Canvas, StrikePosition, LowestKey, HighestKey, Settings);
   Canvas.FillRectangle(0, StrikePosition, Canvas.Width, StrikePosition + 2,
-    PianoRollColor(255, 255, 255, 160));
+    Settings.Palette.StrikeLine);
 
   if Settings.DisplayTime <= 0 then
     Exit;
@@ -275,7 +269,7 @@ begin
     NoteRight := LaneRight -
       Round((LaneRight - LaneLeft) * (1.0 - Thickness) / 2.0);
     Canvas.FillRectangle(NoteLeft, TopPosition, Max(NoteLeft + 1, NoteRight),
-      BottomPosition, GetTrackColor(Note.TrackIndex));
+      BottomPosition, GetTrackColor(Note.TrackIndex, Settings.Palette));
   end;
 end;
 

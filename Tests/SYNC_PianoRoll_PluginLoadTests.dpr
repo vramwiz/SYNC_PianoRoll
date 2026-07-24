@@ -25,6 +25,13 @@ type
   end;
   PTrackItem = ^TTrackItem;
 
+  TColorItem = record
+    ItemType: PWideChar;
+    Name: PWideChar;
+    B, G, R, X: Byte;
+  end;
+  PColorItem = ^TColorItem;
+
   TSelectListItem = record
     Name: PWideChar;
     Value: Integer;
@@ -55,7 +62,7 @@ type
   end;
   PPluginTable = ^TPluginTable;
 
-  TItemArray = array[0..13] of Pointer;
+  TItemArray = array[0..20] of Pointer;
   PItemArray = ^TItemArray;
 
 var
@@ -86,10 +93,10 @@ begin
     Items := PItemArray(Table^.Items);
     if Items = nil then
       raise Exception.Create('plugin items are nil');
-    for I := 0 to 12 do
+    for I := 0 to 19 do
       if Items^[I] = nil then
         raise Exception.CreateFmt('plugin item %d is nil', [I]);
-    if Items^[13] <> nil then
+    if Items^[20] <> nil then
       raise Exception.Create('plugin items are not terminated');
     FileItem := PFileItem(Items^[0]);
     if string(FileItem^.ItemType) <> 'file' then
@@ -124,6 +131,31 @@ begin
       raise Exception.Create('beat visibility item mismatch');
     if string(PItemHeader(Items^[12])^.Name) <> '1小節の拍数' then
       raise Exception.Create('beats per measure item mismatch');
+    if (string(PItemHeader(Items^[13])^.ItemType) <> 'color') or
+      (string(PItemHeader(Items^[13])^.Name) <> '白鍵色') then
+      raise Exception.Create('white key color item mismatch');
+    if string(PItemHeader(Items^[14])^.Name) <> '黒鍵色' then
+      raise Exception.Create('black key color item mismatch');
+    if string(PItemHeader(Items^[15])^.Name) <> '白鍵レーン色' then
+      raise Exception.Create('white lane color item mismatch');
+    if string(PItemHeader(Items^[16])^.Name) <> '黒鍵レーン色' then
+      raise Exception.Create('black lane color item mismatch');
+    if string(PItemHeader(Items^[17])^.Name) <> '拍線色' then
+      raise Exception.Create('beat line color item mismatch');
+    if string(PItemHeader(Items^[18])^.Name) <> '小節線色' then
+      raise Exception.Create('measure line color item mismatch');
+    if string(PItemHeader(Items^[19])^.Name) <> '発音線色' then
+      raise Exception.Create('strike line color item mismatch');
+    if (PColorItem(Items^[13])^.R <> 242) or
+      (PColorItem(Items^[13])^.G <> 242) or
+      (PColorItem(Items^[13])^.B <> 242) or
+      (PColorItem(Items^[13])^.X <> 0) then
+      raise Exception.Create('white key default color mismatch');
+    if (PColorItem(Items^[18])^.R <> 255) or
+      (PColorItem(Items^[18])^.G <> 190) or
+      (PColorItem(Items^[18])^.B <> 80) or
+      (PColorItem(Items^[18])^.X <> 0) then
+      raise Exception.Create('measure line default color mismatch');
 
     if (PSelectItem(Items^[6])^.List = nil) or
       (PSelectListArray(PSelectItem(Items^[6])^.List)^[2].Name <> nil) then

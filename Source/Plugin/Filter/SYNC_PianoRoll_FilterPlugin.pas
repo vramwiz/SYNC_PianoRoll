@@ -16,6 +16,7 @@ implementation
 uses
   System.Math,
   System.SysUtils,
+  SYNC_PianoRoll_Colors,
   SYNC_PianoRoll_ContextManager,
   SYNC_PianoRoll_DisplayTypes,
   SYNC_PianoRoll_FrameShared,
@@ -26,21 +27,45 @@ uses
 var
   AutoKeyRangeItem: TFILTER_ITEM_SELECT;
   AutoKeyRangeList: array[0..2] of TFILTER_ITEM_SELECT_ITEM;
+  BeatLineColorItem: TFILTER_ITEM_COLOR;
   BeatsPerMeasureItem: TFILTER_ITEM_TRACK;
+  BlackKeyColorItem: TFILTER_ITEM_COLOR;
+  BlackLaneColorItem: TFILTER_ITEM_COLOR;
   DisplayTimeItem: TFILTER_ITEM_TRACK;
   HighestKeyItem: TFILTER_ITEM_TRACK;
   KeyLengthItem: TFILTER_ITEM_TRACK;
   KeyThicknessItem: TFILTER_ITEM_TRACK;
   LowestKeyItem: TFILTER_ITEM_TRACK;
+  MeasureLineColorItem: TFILTER_ITEM_COLOR;
   MusicFileItem: TFILTER_ITEM_FILE;
   NoteThicknessItem: TFILTER_ITEM_TRACK;
   PianoRollDisplay: IPianoRollDisplay;
   ShowBeatLinesItem: TFILTER_ITEM_SELECT;
   ShowLanesItem: TFILTER_ITEM_SELECT;
   ShowSelectList: array[0..2] of TFILTER_ITEM_SELECT_ITEM;
+  StrikeLineColorItem: TFILTER_ITEM_COLOR;
   StrikePositionItem: TFILTER_ITEM_TRACK;
   TimeShiftItem: TFILTER_ITEM_TRACK;
-  PluginItems: array[0..13] of Pointer;
+  WhiteKeyColorItem: TFILTER_ITEM_COLOR;
+  WhiteLaneColorItem: TFILTER_ITEM_COLOR;
+  PluginItems: array[0..20] of Pointer;
+
+function GetFilterColor(const Item: TFILTER_ITEM_COLOR;
+  Alpha: Byte): TPianoRollColor;
+begin
+  Result := PianoRollColor(Item.R, Item.G, Item.B, Alpha);
+end;
+
+procedure InitializeColorItem(var Item: TFILTER_ITEM_COLOR;
+  Name: PWideChar; const Color: TPianoRollColor);
+begin
+  Item.ItemType := 'color';
+  Item.Name := Name;
+  Item.R := Color.R;
+  Item.G := Color.G;
+  Item.B := Color.B;
+  Item.X := 0;
+end;
 
 procedure BuildDisplaySettings(out Settings: TPianoRollDisplaySettings);
 begin
@@ -63,6 +88,20 @@ begin
   Settings.ShowBeatLines := ShowBeatLinesItem.Value <> 0;
   Settings.BeatsPerMeasure := EnsureRange(
     Round(BeatsPerMeasureItem.Value), 1, 32);
+  Settings.Palette.WhiteKey := GetFilterColor(WhiteKeyColorItem,
+    Settings.Palette.WhiteKey.A);
+  Settings.Palette.BlackKey := GetFilterColor(BlackKeyColorItem,
+    Settings.Palette.BlackKey.A);
+  Settings.Palette.WhiteLane := GetFilterColor(WhiteLaneColorItem,
+    Settings.Palette.WhiteLane.A);
+  Settings.Palette.BlackLane := GetFilterColor(BlackLaneColorItem,
+    Settings.Palette.BlackLane.A);
+  Settings.Palette.BeatLine := GetFilterColor(BeatLineColorItem,
+    Settings.Palette.BeatLine.A);
+  Settings.Palette.MeasureLine := GetFilterColor(MeasureLineColorItem,
+    Settings.Palette.MeasureLine.A);
+  Settings.Palette.StrikeLine := GetFilterColor(StrikeLineColorItem,
+    Settings.Palette.StrikeLine.A);
 end;
 
 function PianoRollProcVideo(Video: PFILTER_PROC_VIDEO): Byte; cdecl;
@@ -105,9 +144,12 @@ var
   );
 
 function GetPianoRollFilterTable: PFILTER_PLUGIN_TABLE;
+var
+  DefaultPalette: TPianoRollPalette;
 begin
   if Plugin.Items = nil then
   begin
+    SetDefaultPianoRollPalette(DefaultPalette);
     MusicFileItem.ItemType := 'file';
     MusicFileItem.Name := '音楽ファイル';
     MusicFileItem.Value := '';
@@ -206,6 +248,21 @@ begin
     BeatsPerMeasureItem.E := 32;
     BeatsPerMeasureItem.Step := 1;
 
+    InitializeColorItem(WhiteKeyColorItem, '白鍵色',
+      DefaultPalette.WhiteKey);
+    InitializeColorItem(BlackKeyColorItem, '黒鍵色',
+      DefaultPalette.BlackKey);
+    InitializeColorItem(WhiteLaneColorItem, '白鍵レーン色',
+      DefaultPalette.WhiteLane);
+    InitializeColorItem(BlackLaneColorItem, '黒鍵レーン色',
+      DefaultPalette.BlackLane);
+    InitializeColorItem(BeatLineColorItem, '拍線色',
+      DefaultPalette.BeatLine);
+    InitializeColorItem(MeasureLineColorItem, '小節線色',
+      DefaultPalette.MeasureLine);
+    InitializeColorItem(StrikeLineColorItem, '発音線色',
+      DefaultPalette.StrikeLine);
+
     // AviUtl2はnil終端された項目ポインター配列を参照する。
     PluginItems[0] := @MusicFileItem;
     PluginItems[1] := @DisplayTimeItem;
@@ -220,7 +277,14 @@ begin
     PluginItems[10] := @ShowLanesItem;
     PluginItems[11] := @ShowBeatLinesItem;
     PluginItems[12] := @BeatsPerMeasureItem;
-    PluginItems[13] := nil;
+    PluginItems[13] := @WhiteKeyColorItem;
+    PluginItems[14] := @BlackKeyColorItem;
+    PluginItems[15] := @WhiteLaneColorItem;
+    PluginItems[16] := @BlackLaneColorItem;
+    PluginItems[17] := @BeatLineColorItem;
+    PluginItems[18] := @MeasureLineColorItem;
+    PluginItems[19] := @StrikeLineColorItem;
+    PluginItems[20] := nil;
     Plugin.Items := @PluginItems[0];
   end;
   Result := @Plugin;
