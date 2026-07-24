@@ -103,6 +103,7 @@
         <DCCReference Include="Source\Lib\SongReader\SongReaderManager.pas"/>
         <DCCReference Include="Source\Common\Timeline\SYNC_PianoRoll_ContextManager.pas"/>
         <DCCReference Include="Source\Common\Data\SYNC_PianoRoll_MusicData.pas"/>
+        <DCCReference Include="Source\Common\Data\SYNC_PianoRoll_PianoKeys.pas"/>
         <DCCReference Include="Source\Common\Render\SYNC_PianoRoll_RGBA.pas"/>
         <DCCReference Include="Source\Common\Layout\SYNC_PianoRoll_DisplayTypes.pas"/>
         <DCCReference Include="Source\Display\Vertical\SYNC_PianoRoll_VerticalDisplay.pas"/>

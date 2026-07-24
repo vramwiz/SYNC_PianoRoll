@@ -15,12 +15,22 @@ uses
   System.Math,
   System.SysUtils,
   SYNC_PianoRoll_MusicData,
+  SYNC_PianoRoll_PianoKeys,
   SYNC_PianoRoll_RGBA;
 
 type
   TVerticalPianoRollDisplay = class(TInterfacedObject, IPianoRollDisplay)
   private
+    procedure DrawKeyboard(var Canvas: TPianoRollCanvas;
+      StrikePosition, LowestKey, HighestKey: Integer;
+      const Settings: TPianoRollDisplaySettings);
+    procedure GetKeyAxisBounds(CanvasWidth, MidiKey, LowestKey,
+      HighestKey: Integer; KeyThickness: Double;
+      out StartPosition, EndPosition: Integer);
     function GetTrackColor(TrackIndex: Integer): TPianoRollColor;
+    procedure ResolveKeyRange(const Data: IPianoRollMusicData;
+      const Settings: TPianoRollDisplaySettings;
+      out LowestKey, HighestKey: Integer);
   public
     procedure Draw(var Canvas: TPianoRollCanvas;
       const Data: IPianoRollMusicData; TimeSeconds: Double;
@@ -29,8 +39,13 @@ type
 
 function TVerticalPianoRollDisplay.GetTrackColor(
   TrackIndex: Integer): TPianoRollColor;
+var
+  ColorIndex: Integer;
 begin
-  case Abs(TrackIndex) mod 6 of
+  ColorIndex := TrackIndex mod 6;
+  if ColorIndex < 0 then
+    Inc(ColorIndex, 6);
+  case ColorIndex of
     0: Result := PianoRollColor(80, 210, 255, 255);
     1: Result := PianoRollColor(255, 120, 180, 255);
     2: Result := PianoRollColor(120, 235, 140, 255);
@@ -41,11 +56,99 @@ begin
   end;
 end;
 
+procedure TVerticalPianoRollDisplay.GetKeyAxisBounds(CanvasWidth, MidiKey,
+  LowestKey, HighestKey: Integer; KeyThickness: Double;
+  out StartPosition, EndPosition: Integer);
+var
+  AxisCenter, KeyCenter, RangeCenter, VisibleThickness: Double;
+begin
+  KeyThickness := Max(1.0, KeyThickness);
+  RangeCenter := (GetPianoKeyPitchCenter(LowestKey) +
+    GetPianoKeyPitchCenter(HighestKey)) * 0.5;
+  KeyCenter := GetPianoKeyPitchCenter(MidiKey);
+  AxisCenter := CanvasWidth * 0.5 +
+    (KeyCenter - RangeCenter) * KeyThickness;
+  if IsPianoBlackKey(MidiKey) then
+    VisibleThickness := KeyThickness * 0.62
+  else
+    VisibleThickness := KeyThickness;
+  StartPosition := Round(AxisCenter - VisibleThickness * 0.5);
+  EndPosition := Round(AxisCenter + VisibleThickness * 0.5);
+  if EndPosition <= StartPosition then
+    EndPosition := StartPosition + 1;
+end;
+
+procedure TVerticalPianoRollDisplay.ResolveKeyRange(
+  const Data: IPianoRollMusicData;
+  const Settings: TPianoRollDisplaySettings;
+  out LowestKey, HighestKey: Integer);
+var
+  I: Integer;
+  Note: TPianoRollNoteData;
+begin
+  LowestKey := EnsureRange(Settings.LowestKey, 0, 127);
+  HighestKey := EnsureRange(Settings.HighestKey, LowestKey, 127);
+  if Settings.AutoKeyRange and Assigned(Data) and
+    (Data.NoteCount > 0) then
+  begin
+    LowestKey := 127;
+    HighestKey := 0;
+    for I := 0 to Data.NoteCount - 1 do
+    begin
+      Note := Data.Notes[I];
+      LowestKey := Min(LowestKey, EnsureRange(Note.Key, 0, 127));
+      HighestKey := Max(HighestKey, EnsureRange(Note.Key, 0, 127));
+    end;
+  end;
+
+  // 音域端が黒鍵でも、その下にある白鍵の土台を必ず含める。
+  while (LowestKey > 0) and IsPianoBlackKey(LowestKey) do
+    Dec(LowestKey);
+  while (HighestKey < 127) and IsPianoBlackKey(HighestKey) do
+    Inc(HighestKey);
+end;
+
+procedure TVerticalPianoRollDisplay.DrawKeyboard(
+  var Canvas: TPianoRollCanvas; StrikePosition, LowestKey,
+  HighestKey: Integer; const Settings: TPianoRollDisplaySettings);
+var
+  EndPosition, Key, StartPosition: Integer;
+  KeyboardBottom, KeyboardTop: Integer;
+begin
+  if Settings.KeyLength <= 0 then
+    Exit;
+  KeyboardTop := StrikePosition + 2;
+  KeyboardBottom := KeyboardTop + Round(Settings.KeyLength);
+
+  // 白鍵を先に並べ、境界線を付ける。
+  for Key := LowestKey to HighestKey do
+    if not IsPianoBlackKey(Key) then
+    begin
+      GetKeyAxisBounds(Canvas.Width, Key, LowestKey, HighestKey,
+        Settings.KeyThickness, StartPosition, EndPosition);
+      Canvas.FillRectangle(StartPosition, KeyboardTop, EndPosition,
+        KeyboardBottom, PianoRollColor(242, 242, 242, 255));
+      Canvas.FillRectangle(StartPosition, KeyboardTop, StartPosition + 1,
+        KeyboardBottom, PianoRollColor(72, 72, 72, 255));
+    end;
+
+  // 黒鍵は白鍵の上へ重ねる。
+  for Key := LowestKey to HighestKey do
+    if IsPianoBlackKey(Key) then
+    begin
+      GetKeyAxisBounds(Canvas.Width, Key, LowestKey, HighestKey,
+        Settings.KeyThickness, StartPosition, EndPosition);
+      Canvas.FillRectangle(StartPosition, KeyboardTop, EndPosition,
+        KeyboardTop + Round(Settings.KeyLength * 0.62),
+        PianoRollColor(24, 24, 24, 255));
+    end;
+end;
+
 procedure TVerticalPianoRollDisplay.Draw(var Canvas: TPianoRollCanvas;
   const Data: IPianoRollMusicData; TimeSeconds: Double;
   const Settings: TPianoRollDisplaySettings);
 var
-  BottomPosition, EndPosition, I, KeyCount, KeyIndex: Integer;
+  BottomPosition, EndPosition, I: Integer;
   LaneLeft, LaneRight, NoteLeft, NoteRight: Integer;
   StartPosition, StrikePosition, TopPosition: Integer;
   EndSeconds, PixelsPerSecond, Thickness: Double;
@@ -55,11 +158,10 @@ begin
   if not Assigned(Data) or (Canvas.Width <= 0) or (Canvas.Height <= 0) then
     Exit;
 
-  LowestKey := EnsureRange(Settings.LowestKey, 0, 127);
-  HighestKey := EnsureRange(Settings.HighestKey, LowestKey, 127);
-  KeyCount := HighestKey - LowestKey + 1;
+  ResolveKeyRange(Data, Settings, LowestKey, HighestKey);
   StrikePosition := EnsureRange(
     Round(Canvas.Height * Settings.StrikePosition), 0, Canvas.Height - 1);
+  DrawKeyboard(Canvas, StrikePosition, LowestKey, HighestKey, Settings);
   Canvas.FillRectangle(0, StrikePosition, Canvas.Width, StrikePosition + 2,
     PianoRollColor(255, 255, 255, 160));
 
@@ -89,9 +191,8 @@ begin
     if (BottomPosition < 0) or (TopPosition >= Canvas.Height) then
       Continue;
 
-    KeyIndex := Note.Key - LowestKey;
-    LaneLeft := KeyIndex * Canvas.Width div KeyCount;
-    LaneRight := (KeyIndex + 1) * Canvas.Width div KeyCount;
+    GetKeyAxisBounds(Canvas.Width, Note.Key, LowestKey, HighestKey,
+      Settings.KeyThickness, LaneLeft, LaneRight);
     NoteLeft := LaneLeft +
       Round((LaneRight - LaneLeft) * (1.0 - Thickness) / 2.0);
     NoteRight := LaneRight -

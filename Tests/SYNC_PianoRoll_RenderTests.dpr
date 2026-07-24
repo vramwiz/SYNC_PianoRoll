@@ -8,6 +8,7 @@ uses
   System.SysUtils,
   AviUtl2FilterTypes in 'Source\Lib\AviUtl2FilterTypes.pas',
   SYNC_PianoRoll_MusicData in 'Source\Common\Data\SYNC_PianoRoll_MusicData.pas',
+  SYNC_PianoRoll_PianoKeys in 'Source\Common\Data\SYNC_PianoRoll_PianoKeys.pas',
   SYNC_PianoRoll_RGBA in 'Source\Common\Render\SYNC_PianoRoll_RGBA.pas',
   SYNC_PianoRoll_DisplayTypes in 'Source\Common\Layout\SYNC_PianoRoll_DisplayTypes.pas',
   SYNC_PianoRoll_VerticalDisplay in 'Source\Display\Vertical\SYNC_PianoRoll_VerticalDisplay.pas',
@@ -27,8 +28,10 @@ type
   end;
 
 var
+  CapturedBlackKeyPixels: Integer;
   CapturedHeight: Integer;
   CapturedOpaquePixels: Integer;
+  CapturedWhiteKeyPixels: Integer;
   CapturedWidth: Integer;
 
 procedure Check(Condition: Boolean; const MessageText: string);
@@ -47,9 +50,23 @@ begin
   CapturedWidth := Width;
   CapturedHeight := Height;
   CapturedOpaquePixels := 0;
+  CapturedBlackKeyPixels := 0;
+  CapturedWhiteKeyPixels := 0;
   for I := 0 to Width * Height - 1 do
+  begin
     if PPixelArray(Buffer)^[I].A <> 0 then
       Inc(CapturedOpaquePixels);
+    if (PPixelArray(Buffer)^[I].R = 24) and
+      (PPixelArray(Buffer)^[I].G = 24) and
+      (PPixelArray(Buffer)^[I].B = 24) and
+      (PPixelArray(Buffer)^[I].A = 255) then
+      Inc(CapturedBlackKeyPixels);
+    if (PPixelArray(Buffer)^[I].R = 242) and
+      (PPixelArray(Buffer)^[I].G = 242) and
+      (PPixelArray(Buffer)^[I].B = 242) and
+      (PPixelArray(Buffer)^[I].A = 255) then
+      Inc(CapturedWhiteKeyPixels);
+  end;
 end;
 
 function TMockMusicData.GetFileName: string;
@@ -126,6 +143,8 @@ begin
       'output size mismatch');
     Check(CapturedOpaquePixels > CapturedWidth * 2,
       'note rectangle was not drawn');
+    Check(CapturedWhiteKeyPixels > 0, 'white keys were not drawn');
+    Check(CapturedBlackKeyPixels > 0, 'black keys were not drawn');
 
     ObjectInfo.Width := 320;
     ObjectInfo.Height := 180;
