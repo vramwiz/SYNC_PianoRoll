@@ -15,7 +15,7 @@ type
   TGetFilterPluginTable = function: PFILTER_PLUGIN_TABLE; cdecl;
   TInitializePlugin = function(Version: DWORD): Byte; cdecl;
   TUninitializePlugin = procedure; cdecl;
-  TItemArray = array[0..26] of Pointer;
+  TItemArray = array[0..28] of Pointer;
   PItemArray = ^TItemArray;
 
 var
@@ -146,14 +146,14 @@ begin
       Video.Object_ := @ObjectInfo;
       Video.SetImageData := CaptureImage;
 
-      PFILTER_ITEM_TRACK(Items^[4])^.Value := 128;
-      PFILTER_ITEM_TRACK(Items^[5])^.Value := 64;
+      PFILTER_ITEM_TRACK(Items^[7])^.Value := 128;
+      PFILTER_ITEM_TRACK(Items^[8])^.Value := 64;
       CapturedOpaquePixels := 0;
       Table^.Func_Proc_Video(@Video);
       FullRangePixels := CapturedOpaquePixels;
 
-      PFILTER_ITEM_TRACK(Items^[4])^.Value := 1;
-      PFILTER_ITEM_TRACK(Items^[5])^.Value := 60;
+      PFILTER_ITEM_TRACK(Items^[7])^.Value := 1;
+      PFILTER_ITEM_TRACK(Items^[8])^.Value := 60;
       CapturedOpaquePixels := 0;
       Table^.Func_Proc_Video(@Video);
       SingleRangePixels := CapturedOpaquePixels;
@@ -164,17 +164,17 @@ begin
         'pitch range settings did not change the rendered pixels');
 
       // 基準音域外のノートは追従なしでは隠れ、両追従方式では表示される。
-      PFILTER_ITEM_TRACK(Items^[4])^.Value := 12;
-      PFILTER_ITEM_TRACK(Items^[5])^.Value := 0;
-      PFILTER_ITEM_SELECT(Items^[6])^.Value := 0;
+      PFILTER_ITEM_TRACK(Items^[7])^.Value := 12;
+      PFILTER_ITEM_TRACK(Items^[8])^.Value := 0;
+      PFILTER_ITEM_SELECT(Items^[9])^.Value := 0;
       Table^.Func_Proc_Video(@Video);
       Check(CapturedTrackPixels = 0,
         'none follow unexpectedly moved the pitch range');
-      PFILTER_ITEM_SELECT(Items^[6])^.Value := 1;
+      PFILTER_ITEM_SELECT(Items^[9])^.Value := 1;
       Table^.Func_Proc_Video(@Video);
       Check(CapturedTrackPixels > 0,
         'always follow did not move the pitch range');
-      PFILTER_ITEM_SELECT(Items^[6])^.Value := 2;
+      PFILTER_ITEM_SELECT(Items^[9])^.Value := 2;
       Table^.Func_Proc_Video(@Video);
       Check(CapturedTrackPixels > 0,
         'overflow follow did not move the pitch range');
@@ -186,13 +186,13 @@ begin
       CapturedPresetLength := '';
       CapturedPresetThickness := '';
       CapturedPresetNoteThickness := '';
-      PFILTER_ITEM_SELECT(Items^[23])^.Value := 2;
-      PFILTER_ITEM_BUTTON(Items^[24])^.Callback(@Edit);
-      Check(PFILTER_ITEM_TRACK(Items^[7])^.Value = 180,
+      PFILTER_ITEM_SELECT(Items^[1])^.Value := 2;
+      PFILTER_ITEM_BUTTON(Items^[2])^.Callback(@Edit);
+      Check(PFILTER_ITEM_TRACK(Items^[10])^.Value = 180,
         'large preset local key length mismatch');
-      Check(PFILTER_ITEM_TRACK(Items^[8])^.Value = 60,
+      Check(PFILTER_ITEM_TRACK(Items^[11])^.Value = 60,
         'large preset local key thickness mismatch');
-      Check(PFILTER_ITEM_TRACK(Items^[9])^.Value = 80,
+      Check(PFILTER_ITEM_TRACK(Items^[12])^.Value = 80,
         'large preset local note thickness mismatch');
       Check((CapturedPresetLength = '180') and
         (CapturedPresetThickness = '60') and

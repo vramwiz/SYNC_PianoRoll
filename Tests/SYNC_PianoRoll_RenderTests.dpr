@@ -173,12 +173,17 @@ begin
       (PPixelArray(Buffer)^[I].A = 255) and
       ((I div Width) > Round(Height * 0.80) + 2) then
       Inc(CapturedKeyboardDepthPixels);
-    if (PPixelArray(Buffer)^[I].R >= 45) and
+    if ((((PPixelArray(Buffer)^[I].R >= 45) and
       (PPixelArray(Buffer)^[I].R <= 70) and
       (PPixelArray(Buffer)^[I].G >= 130) and
       (PPixelArray(Buffer)^[I].G <= 165) and
       (PPixelArray(Buffer)^[I].B >= 160) and
-      (PPixelArray(Buffer)^[I].B <= 195) and
+      (PPixelArray(Buffer)^[I].B <= 195))) or
+      ((PPixelArray(Buffer)^[I].R >= 120) and
+      (PPixelArray(Buffer)^[I].R <= 135) and
+      (PPixelArray(Buffer)^[I].G >= 218) and
+      (PPixelArray(Buffer)^[I].G <= 230) and
+      (PPixelArray(Buffer)^[I].B = 255))) and
       (PPixelArray(Buffer)^[I].A = 255) and
       ((I div Width) > Round(Height * 0.80) + 2) then
       Inc(CapturedActiveKeyDepthPixels);
@@ -249,6 +254,7 @@ begin
 end;
 
 var
+  BaselineBlackKeyPixels: Integer;
   Data: IPianoRollMusicData;
   DefaultStrikeLinePixels: Integer;
   Display: IPianoRollDisplay;
@@ -299,6 +305,7 @@ begin
     Check((CapturedNoteBorderPixels = 0) and
       (CapturedNoteHighlightPixels = 0),
       'flat vertical note retained depth shading');
+    BaselineBlackKeyPixels := CapturedBlackKeyPixels;
     Settings.NoteDepthEnabled := True;
     Check(RenderPianoRoll(@Video, Data, 0.40, Display, Settings),
       'sustained vertical render failed');
@@ -306,6 +313,8 @@ begin
       'vertical glow did not decay independently of the active key');
     Check(CapturedActiveKeyDepthPixels > 0,
       'active vertical key depth was not drawn');
+    Check(CapturedBlackKeyPixels = BaselineBlackKeyPixels,
+      'active vertical white key covered adjacent black keys');
     Check(RenderPianoRoll(@Video, Data, 0.75, Display, Settings),
       'inactive vertical render failed');
     Check((CapturedActiveKeyPixels = 0) and (CapturedGlowPixels = 0),

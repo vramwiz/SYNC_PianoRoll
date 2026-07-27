@@ -34,6 +34,7 @@ var
   CapturedActiveKey: Boolean;
   CapturedActiveKeyDepth: Boolean;
   CapturedBlackKey: Boolean;
+  CapturedBlackKeyPixels: Integer;
   CapturedBlackLane: Boolean;
   CapturedGlow: Boolean;
   CapturedHeight: Integer;
@@ -78,6 +79,7 @@ begin
   CapturedHeight := Height;
   CapturedActiveKey := False;
   CapturedActiveKeyDepth := False;
+  CapturedBlackKeyPixels := 0;
   CapturedGlow := False;
   CapturedKeyboardDepth := False;
   CapturedNoteBorder := False;
@@ -100,15 +102,22 @@ begin
       CapturedActiveKey := True;
     if (X < 78) and (Pixel.R = 24) and (Pixel.G = 24) and
       (Pixel.B = 24) and (Pixel.A = 255) then
+    begin
       CapturedBlackKey := True;
+      Inc(CapturedBlackKeyPixels);
+    end;
     if (X < 78) and
       (((Pixel.R = 246) and (Pixel.G = 246) and (Pixel.B = 246)) or
       ((Pixel.R = 66) and (Pixel.G = 66) and (Pixel.B = 66))) and
       (Pixel.A = 255) then
       CapturedKeyboardDepth := True;
-    if (X < 78) and (Pixel.R >= 45) and (Pixel.R <= 70) and
+    if (X < 78) and
+      ((((Pixel.R >= 45) and (Pixel.R <= 70) and
       (Pixel.G >= 130) and (Pixel.G <= 165) and
-      (Pixel.B >= 160) and (Pixel.B <= 195) and (Pixel.A = 255) then
+      (Pixel.B >= 160) and (Pixel.B <= 195))) or
+      ((Pixel.R >= 120) and (Pixel.R <= 135) and
+      (Pixel.G >= 218) and (Pixel.G <= 230) and (Pixel.B = 255))) and
+      (Pixel.A = 255) then
       CapturedActiveKeyDepth := True;
     if (Pixel.R > 220) and (Pixel.G > 220) and (Pixel.B > 220) and
       (Pixel.A > 200) and (X >= 80) and (X <= 92) then
@@ -186,6 +195,7 @@ begin
 end;
 
 var
+  BaselineBlackKeyPixels: Integer;
   Data: IPianoRollMusicData;
   Display: IPianoRollDisplay;
   ObjectInfo: TOBJECT_INFO;
@@ -237,6 +247,7 @@ begin
       'flat horizontal render failed');
     Check(not CapturedNoteBorder and not CapturedNoteHighlight,
       'flat horizontal note retained depth shading');
+    BaselineBlackKeyPixels := CapturedBlackKeyPixels;
     Settings.NoteDepthEnabled := True;
     Check(RenderPianoRoll(@Video, Data, 0.5, Display, Settings),
       'active horizontal render failed');
@@ -248,6 +259,8 @@ begin
       'horizontal glow did not decay independently of the active key');
     Check(CapturedActiveKeyDepth,
       'active horizontal key depth was not drawn');
+    Check(CapturedBlackKeyPixels = BaselineBlackKeyPixels,
+      'active horizontal white key covered adjacent black keys');
     Check(RenderPianoRoll(@Video, Data, 1.0, Display, Settings),
       'inactive horizontal render failed');
     Check(not CapturedActiveKey and not CapturedGlow,

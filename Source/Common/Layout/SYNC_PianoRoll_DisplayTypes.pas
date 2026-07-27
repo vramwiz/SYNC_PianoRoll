@@ -39,6 +39,8 @@ type
     BeatsPerMeasure: Integer; // 1小節として強調する拍数。
     TrackColorMode: TPianoRollTrackColorMode; // ノートへ適用する配色規則。
     SingleTrackColor: TPianoRollColor;        // 単色配色で使うノート色。
+    GradientColor1: TPianoRollColor;          // 音階グラデーションの高音側。
+    GradientColor2: TPianoRollColor;          // 音階グラデーションの低音側。
     Palette: TPianoRollPalette;
   end;
 
@@ -88,6 +90,8 @@ begin
   SetDefaultPianoRollPalette(Settings.Palette);
   Settings.TrackColorMode := ptcmSingleColor;
   Settings.SingleTrackColor := Settings.Palette.TrackColors[0];
+  Settings.GradientColor1 := PianoRollColor(255, 0, 0, 255);
+  Settings.GradientColor2 := PianoRollColor(0, 0, 255, 255);
 end;
 
 end.

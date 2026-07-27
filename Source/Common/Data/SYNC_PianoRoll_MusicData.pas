@@ -51,6 +51,8 @@ procedure FinalizePianoRollMusicCache;
 function TryGetPianoRollMusicData(const FileName: string;
   out Data: IPianoRollMusicData): Boolean;
 function EnsurePianoRollMusicData(const FileName: string): Boolean;
+procedure GetPianoRollNoteRanges(const Data: IPianoRollMusicData;
+  out MinTrack, MaxTrack, MinKey, MaxKey: Integer);
 
 implementation
 
@@ -91,6 +93,38 @@ type
 var
   MusicCache: TObjectDictionary<string, TPianoRollMusicCacheEntry>;
   MusicCacheLock: TCriticalSection;
+
+procedure GetPianoRollNoteRanges(const Data: IPianoRollMusicData;
+  out MinTrack, MaxTrack, MinKey, MaxKey: Integer);
+var
+  I: Integer;
+  Note: TPianoRollNoteData;
+begin
+  MinTrack := 0;
+  MaxTrack := 0;
+  MinKey := 0;
+  MaxKey := 0;
+  if not Assigned(Data) or (Data.NoteCount = 0) then
+    Exit;
+
+  Note := Data.Notes[0];
+  MinTrack := Note.TrackIndex;
+  MaxTrack := Note.TrackIndex;
+  MinKey := Note.Key;
+  MaxKey := Note.Key;
+  for I := 1 to Data.NoteCount - 1 do
+  begin
+    Note := Data.Notes[I];
+    if Note.TrackIndex < MinTrack then
+      MinTrack := Note.TrackIndex;
+    if Note.TrackIndex > MaxTrack then
+      MaxTrack := Note.TrackIndex;
+    if Note.Key < MinKey then
+      MinKey := Note.Key;
+    if Note.Key > MaxKey then
+      MaxKey := Note.Key;
+  end;
+end;
 
 constructor TPianoRollMusicData.Create(const FileName: string; Song: TSongData);
 var

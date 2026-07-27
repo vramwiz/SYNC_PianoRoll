@@ -37,6 +37,8 @@ var
   DisplayTypeItem: TFILTER_ITEM_SELECT;
   DisplayTypeList: array[0..2] of TFILTER_ITEM_SELECT_ITEM;
   DisplayTimeItem: TFILTER_ITEM_TRACK;
+  GradientColor1Item: TFILTER_ITEM_COLOR;
+  GradientColor2Item: TFILTER_ITEM_COLOR;
   HorizontalPianoRollDisplay: IPianoRollDisplay;
   KeyLengthItem: TFILTER_ITEM_TRACK;
   KeyThicknessItem: TFILTER_ITEM_TRACK;
@@ -59,11 +61,11 @@ var
   StrikePositionItem: TFILTER_ITEM_TRACK;
   TimeShiftItem: TFILTER_ITEM_TRACK;
   TrackColorModeItem: TFILTER_ITEM_SELECT;
-  TrackColorModeList: array[0..2] of TFILTER_ITEM_SELECT_ITEM;
+  TrackColorModeList: array[0..15] of TFILTER_ITEM_SELECT_ITEM;
   VisibleNoteCountItem: TFILTER_ITEM_TRACK;
   WhiteKeyColorItem: TFILTER_ITEM_COLOR;
   WhiteLaneColorItem: TFILTER_ITEM_COLOR;
-  PluginItems: array[0..26] of Pointer;
+  PluginItems: array[0..28] of Pointer;
 
 function GetFilterColor(const Item: TFILTER_ITEM_COLOR;
   Alpha: Byte): TPianoRollColor;
@@ -174,12 +176,19 @@ begin
   Settings.ShowBeatLines := ShowBeatLinesItem.Value <> 0;
   Settings.BeatsPerMeasure := EnsureRange(
     Round(BeatsPerMeasureItem.Value), 1, 32);
-  if TrackColorModeItem.Value = Ord(ptcmVariation1) then
-    Settings.TrackColorMode := ptcmVariation1
+  if InRange(TrackColorModeItem.Value,
+    Ord(Low(TPianoRollTrackColorMode)),
+    Ord(High(TPianoRollTrackColorMode))) then
+    Settings.TrackColorMode :=
+      TPianoRollTrackColorMode(TrackColorModeItem.Value)
   else
     Settings.TrackColorMode := ptcmSingleColor;
   Settings.SingleTrackColor := GetFilterColor(SingleTrackColorItem,
     Settings.SingleTrackColor.A);
+  Settings.GradientColor1 := GetFilterColor(GradientColor1Item,
+    Settings.GradientColor1.A);
+  Settings.GradientColor2 := GetFilterColor(GradientColor2Item,
+    Settings.GradientColor2.A);
   Settings.Palette.WhiteKey := GetFilterColor(WhiteKeyColorItem,
     Settings.Palette.WhiteKey.A);
   Settings.Palette.BlackKey := GetFilterColor(BlackKeyColorItem,
@@ -385,14 +394,44 @@ begin
     TrackColorModeList[0].Value := Ord(ptcmSingleColor);
     TrackColorModeList[1].Name := 'バリエーション1';
     TrackColorModeList[1].Value := Ord(ptcmVariation1);
-    TrackColorModeList[2].Name := nil;
-    TrackColorModeList[2].Value := 0;
+    TrackColorModeList[2].Name := 'トラック：DOS';
+    TrackColorModeList[2].Value := Ord(ptcmTrackDOS);
+    TrackColorModeList[3].Name := 'トラック：虹';
+    TrackColorModeList[3].Value := Ord(ptcmTrackRainbow);
+    TrackColorModeList[4].Name := 'トラック：淡色';
+    TrackColorModeList[4].Value := Ord(ptcmTrackSoft);
+    TrackColorModeList[5].Name := 'トラック：暗色';
+    TrackColorModeList[5].Value := Ord(ptcmTrackDark);
+    TrackColorModeList[6].Name := '音階：DOS';
+    TrackColorModeList[6].Value := Ord(ptcmKeyDOS);
+    TrackColorModeList[7].Name := '音階：虹';
+    TrackColorModeList[7].Value := Ord(ptcmKeyRainbow);
+    TrackColorModeList[8].Name := '音階：淡色';
+    TrackColorModeList[8].Value := Ord(ptcmKeySoft);
+    TrackColorModeList[9].Name := '音階：暗色';
+    TrackColorModeList[9].Value := Ord(ptcmKeyDark);
+    TrackColorModeList[10].Name := 'ドレミ：虹';
+    TrackColorModeList[10].Value := Ord(ptcmDoReMiRainbow);
+    TrackColorModeList[11].Name := 'ドレミ：淡色';
+    TrackColorModeList[11].Value := Ord(ptcmDoReMiSoft);
+    TrackColorModeList[12].Name := 'ドレミ：暗色';
+    TrackColorModeList[12].Value := Ord(ptcmDoReMiDark);
+    TrackColorModeList[13].Name := 'グラデ色：RGB';
+    TrackColorModeList[13].Value := Ord(ptcmGradientRGB);
+    TrackColorModeList[14].Name := 'グラデ色：HSV';
+    TrackColorModeList[14].Value := Ord(ptcmGradientHSV);
+    TrackColorModeList[15].Name := nil;
+    TrackColorModeList[15].Value := 0;
     TrackColorModeItem.ItemType := 'select';
     TrackColorModeItem.Name := 'ノート配色';
     TrackColorModeItem.Value := Ord(ptcmSingleColor);
     TrackColorModeItem.List := @TrackColorModeList[0];
     InitializeColorItem(SingleTrackColorItem, 'ノート単色',
       DefaultPalette.TrackColors[0]);
+    InitializeColorItem(GradientColor1Item, 'グラデ色1',
+      PianoRollColor(255, 0, 0, 255));
+    InitializeColorItem(GradientColor2Item, 'グラデ色2',
+      PianoRollColor(0, 0, 255, 255));
 
     DisplayTypeList[0].Name := '縦';
     DisplayTypeList[0].Value := Ord(pdtVertical);
@@ -412,42 +451,44 @@ begin
     SizePresetList[2].Name := nil;
     SizePresetList[2].Value := 0;
     SizePresetItem.ItemType := 'select';
-    SizePresetItem.Name := 'サイズ初期値';
+    SizePresetItem.Name := 'サイズ';
     SizePresetItem.Value := SIZE_PRESET_MEDIUM;
     SizePresetItem.List := @SizePresetList[0];
     SizePresetButton.ItemType := 'button';
-    SizePresetButton.Name := 'サイズ初期値を適用';
+    SizePresetButton.Name := 'サイズ適用';
     SizePresetButton.Callback := ApplySizePresetButton;
 
     // AviUtl2はnil終端された項目ポインター配列を参照する。
-    // 既存プロジェクトとの互換性を保つため、新項目は末尾へ追加する。
+    // 通常利用する基本設定を先頭へまとめ、以降に詳細設定を並べる。
     PluginItems[0] := @MusicFileItem;
-    PluginItems[1] := @DisplayTimeItem;
-    PluginItems[2] := @StrikePositionItem;
-    PluginItems[3] := @TimeShiftItem;
-    PluginItems[4] := @VisibleNoteCountItem;
-    PluginItems[5] := @CenterNoteItem;
-    PluginItems[6] := @PitchFollowItem;
-    PluginItems[7] := @KeyLengthItem;
-    PluginItems[8] := @KeyThicknessItem;
-    PluginItems[9] := @NoteThicknessItem;
-    PluginItems[10] := @ShowLanesItem;
-    PluginItems[11] := @ShowBeatLinesItem;
-    PluginItems[12] := @BeatsPerMeasureItem;
-    PluginItems[13] := @WhiteKeyColorItem;
-    PluginItems[14] := @BlackKeyColorItem;
-    PluginItems[15] := @WhiteLaneColorItem;
-    PluginItems[16] := @BlackLaneColorItem;
-    PluginItems[17] := @BeatLineColorItem;
-    PluginItems[18] := @MeasureLineColorItem;
-    PluginItems[19] := @StrikeLineColorItem;
-    PluginItems[20] := @TrackColorModeItem;
-    PluginItems[21] := @SingleTrackColorItem;
-    PluginItems[22] := @DisplayTypeItem;
-    PluginItems[23] := @SizePresetItem;
-    PluginItems[24] := @SizePresetButton;
+    PluginItems[1] := @SizePresetItem;
+    PluginItems[2] := @SizePresetButton;
+    PluginItems[3] := @DisplayTypeItem;
+    PluginItems[4] := @DisplayTimeItem;
+    PluginItems[5] := @StrikePositionItem;
+    PluginItems[6] := @TimeShiftItem;
+    PluginItems[7] := @VisibleNoteCountItem;
+    PluginItems[8] := @CenterNoteItem;
+    PluginItems[9] := @PitchFollowItem;
+    PluginItems[10] := @KeyLengthItem;
+    PluginItems[11] := @KeyThicknessItem;
+    PluginItems[12] := @NoteThicknessItem;
+    PluginItems[13] := @ShowLanesItem;
+    PluginItems[14] := @ShowBeatLinesItem;
+    PluginItems[15] := @BeatsPerMeasureItem;
+    PluginItems[16] := @WhiteKeyColorItem;
+    PluginItems[17] := @BlackKeyColorItem;
+    PluginItems[18] := @WhiteLaneColorItem;
+    PluginItems[19] := @BlackLaneColorItem;
+    PluginItems[20] := @BeatLineColorItem;
+    PluginItems[21] := @MeasureLineColorItem;
+    PluginItems[22] := @StrikeLineColorItem;
+    PluginItems[23] := @TrackColorModeItem;
+    PluginItems[24] := @SingleTrackColorItem;
     PluginItems[25] := @NoteDepthItem;
-    PluginItems[26] := nil;
+    PluginItems[26] := @GradientColor1Item;
+    PluginItems[27] := @GradientColor2Item;
+    PluginItems[28] := nil;
     Plugin.Items := @PluginItems[0];
   end;
   Result := @Plugin;

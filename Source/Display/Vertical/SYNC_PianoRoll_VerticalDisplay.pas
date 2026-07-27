@@ -41,11 +41,13 @@ type
       const Settings: TPianoRollDisplaySettings);
     procedure DrawActiveKeys(var Canvas: TPianoRollCanvas;
       const Data: IPianoRollMusicData; TimeSeconds: Double;
-      StrikePosition, LowestKey, HighestKey: Integer;
+      StrikePosition, LowestKey, HighestKey, MinTrack, MaxTrack,
+      MinMusicKey, MaxMusicKey: Integer;
       const Settings: TPianoRollDisplaySettings);
     procedure DrawStrikeGlow(var Canvas: TPianoRollCanvas;
       const Data: IPianoRollMusicData; TimeSeconds: Double;
-      StrikePosition, LowestKey, HighestKey: Integer;
+      StrikePosition, LowestKey, HighestKey, MinTrack, MaxTrack,
+      MinMusicKey, MaxMusicKey: Integer;
       const Settings: TPianoRollDisplaySettings);
     procedure DrawNote(var Canvas: TPianoRollCanvas;
       LeftPosition, TopPosition, RightPosition, BottomPosition: Integer;
@@ -161,11 +163,12 @@ end;
 
 procedure TVerticalPianoRollDisplay.DrawActiveKeys(
   var Canvas: TPianoRollCanvas; const Data: IPianoRollMusicData;
-  TimeSeconds: Double; StrikePosition, LowestKey, HighestKey: Integer;
+  TimeSeconds: Double; StrikePosition, LowestKey, HighestKey, MinTrack,
+  MaxTrack, MinMusicKey, MaxMusicKey: Integer;
   const Settings: TPianoRollDisplaySettings);
 var
   Color: TPianoRollColor;
-  EndPosition, I, StartPosition: Integer;
+  EndPosition, I, Key, StartPosition: Integer;
   KeyboardBottom, KeyboardTop: Integer;
   Note: TPianoRollNoteData;
 begin
@@ -173,28 +176,58 @@ begin
     Exit;
   KeyboardTop := StrikePosition + 2;
   KeyboardBottom := KeyboardTop + Round(Settings.KeyLength);
+  // 発音中の白鍵を先に描き、通常時と同じく黒鍵が上へ重なる形を維持する。
   for I := 0 to Data.NoteCount - 1 do
   begin
     Note := Data.Notes[I];
     if not IsNoteActiveAtTime(Note, TimeSeconds) or
-      (Note.Key < LowestKey) or (Note.Key > HighestKey) then
+      (Note.Key < LowestKey) or (Note.Key > HighestKey) or
+      IsPianoBlackKey(Note.Key) then
       Continue;
-    Color := ResolvePianoRollTrackColor(Note.TrackIndex,
-      Settings.TrackColorMode, Settings.SingleTrackColor, Settings.Palette);
+    Color := ResolvePianoRollTrackColor(Note.TrackIndex, Note.Key,
+      MinTrack, MaxTrack, MinMusicKey, MaxMusicKey,
+      Settings.TrackColorMode, Settings.SingleTrackColor,
+      Settings.GradientColor1, Settings.GradientColor2, Settings.Palette);
     GetKeyAxisBounds(Canvas.Width, Note.Key, LowestKey, HighestKey,
       Settings.KeyThickness, StartPosition, EndPosition);
-    if IsPianoBlackKey(Note.Key) then
+    DrawKeyboardKey(Canvas, StartPosition, KeyboardTop, EndPosition,
+      KeyboardBottom, Color, True, Settings);
+  end;
+
+  // 白鍵の点灯で覆われた隣接黒鍵を復元する。
+  for Key := LowestKey to HighestKey do
+    if IsPianoBlackKey(Key) then
+    begin
+      GetKeyAxisBounds(Canvas.Width, Key, LowestKey, HighestKey,
+        Settings.KeyThickness, StartPosition, EndPosition);
       DrawKeyboardKey(Canvas, StartPosition, KeyboardTop, EndPosition,
-        KeyboardTop + Round(Settings.KeyLength * 0.62), Color, True, Settings)
-    else
-      DrawKeyboardKey(Canvas, StartPosition, KeyboardTop, EndPosition,
-        KeyboardBottom, Color, True, Settings);
+        KeyboardTop + Round(Settings.KeyLength * 0.62),
+        Settings.Palette.BlackKey, False, Settings);
+    end;
+
+  // 発音中の黒鍵は復元した通常黒鍵よりさらに上へ描く。
+  for I := 0 to Data.NoteCount - 1 do
+  begin
+    Note := Data.Notes[I];
+    if not IsNoteActiveAtTime(Note, TimeSeconds) or
+      (Note.Key < LowestKey) or (Note.Key > HighestKey) or
+      not IsPianoBlackKey(Note.Key) then
+      Continue;
+    Color := ResolvePianoRollTrackColor(Note.TrackIndex, Note.Key,
+      MinTrack, MaxTrack, MinMusicKey, MaxMusicKey,
+      Settings.TrackColorMode, Settings.SingleTrackColor,
+      Settings.GradientColor1, Settings.GradientColor2, Settings.Palette);
+    GetKeyAxisBounds(Canvas.Width, Note.Key, LowestKey, HighestKey,
+      Settings.KeyThickness, StartPosition, EndPosition);
+    DrawKeyboardKey(Canvas, StartPosition, KeyboardTop, EndPosition,
+      KeyboardTop + Round(Settings.KeyLength * 0.62), Color, True, Settings);
   end;
 end;
 
 procedure TVerticalPianoRollDisplay.DrawStrikeGlow(
   var Canvas: TPianoRollCanvas; const Data: IPianoRollMusicData;
-  TimeSeconds: Double; StrikePosition, LowestKey, HighestKey: Integer;
+  TimeSeconds: Double; StrikePosition, LowestKey, HighestKey, MinTrack,
+  MaxTrack, MinMusicKey, MaxMusicKey: Integer;
   const Settings: TPianoRollDisplaySettings);
 var
   Color: TPianoRollColor;
@@ -217,8 +250,10 @@ begin
     PeakAlpha := Round(255 * Sqrt(Strength));
     GetKeyAxisBounds(Canvas.Width, Note.Key, LowestKey, HighestKey,
       Settings.KeyThickness, StartPosition, EndPosition);
-    Color := ResolvePianoRollTrackColor(Note.TrackIndex,
-      Settings.TrackColorMode, Settings.SingleTrackColor, Settings.Palette);
+    Color := ResolvePianoRollTrackColor(Note.TrackIndex, Note.Key,
+      MinTrack, MaxTrack, MinMusicKey, MaxMusicKey,
+      Settings.TrackColorMode, Settings.SingleTrackColor,
+      Settings.GradientColor1, Settings.GradientColor2, Settings.Palette);
     Canvas.BlendRadialGlow((StartPosition + EndPosition) div 2,
       StrikePosition - Max(1, Round(Settings.KeyThickness * 0.12)),
       Radius, Radius, PeakAlpha, Color);
@@ -353,7 +388,7 @@ var
   LaneLeft, LaneRight, NoteLeft, NoteRight: Integer;
   StartPosition, StrikePosition, TopPosition: Integer;
   EndSeconds, PixelsPerSecond, Thickness: Double;
-  HighestKey, LowestKey: Integer;
+  HighestKey, LowestKey, MaxMusicKey, MaxTrack, MinMusicKey, MinTrack: Integer;
   Note: TPianoRollNoteData;
 begin
   if not Assigned(Data) or (Canvas.Width <= 0) or (Canvas.Height <= 0) then
@@ -363,6 +398,7 @@ begin
   ResolveEffectivePianoRollPitchRange(Data, TimeSeconds,
     Settings.DisplayTime, Settings.CenterNote, Settings.VisibleNoteCount,
     Settings.PitchFollowMode, LowestKey, HighestKey);
+  GetPianoRollNoteRanges(Data, MinTrack, MaxTrack, MinMusicKey, MaxMusicKey);
   StrikePosition := EnsureRange(
     Round(Canvas.Height * Settings.StrikePosition), 0, Canvas.Height - 1);
   DrawLanes(Canvas, StrikePosition, LowestKey, HighestKey, Settings);
@@ -375,7 +411,8 @@ begin
   end;
   DrawKeyboard(Canvas, StrikePosition, LowestKey, HighestKey, Settings);
   DrawActiveKeys(Canvas, Data, TimeSeconds, StrikePosition,
-    LowestKey, HighestKey, Settings);
+    LowestKey, HighestKey, MinTrack, MaxTrack, MinMusicKey, MaxMusicKey,
+    Settings);
   Canvas.FillRectangle(0, StrikePosition, Canvas.Width, StrikePosition +
     ScalePianoRollThickness(2, Settings.KeyThickness),
     Settings.Palette.StrikeLine);
@@ -411,12 +448,15 @@ begin
     NoteRight := LaneRight -
       Round((LaneRight - LaneLeft) * (1.0 - Thickness) / 2.0);
     DrawNote(Canvas, NoteLeft, TopPosition, Max(NoteLeft + 1, NoteRight),
-      BottomPosition, ResolvePianoRollTrackColor(Note.TrackIndex,
-        Settings.TrackColorMode, Settings.SingleTrackColor, Settings.Palette),
+      BottomPosition, ResolvePianoRollTrackColor(Note.TrackIndex, Note.Key,
+        MinTrack, MaxTrack, MinMusicKey, MaxMusicKey,
+        Settings.TrackColorMode, Settings.SingleTrackColor,
+        Settings.GradientColor1, Settings.GradientColor2, Settings.Palette),
       Settings);
   end;
   DrawStrikeGlow(Canvas, Data, TimeSeconds, StrikePosition,
-    LowestKey, HighestKey, Settings);
+    LowestKey, HighestKey, MinTrack, MaxTrack, MinMusicKey, MaxMusicKey,
+    Settings);
 end;
 
 function CreateVerticalPianoRollDisplay: IPianoRollDisplay;
