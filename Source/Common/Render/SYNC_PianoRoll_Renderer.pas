@@ -1,6 +1,6 @@
 ﻿unit SYNC_PianoRoll_Renderer;
 
-// Object ID + Effect IDごとのRGBAバッファを管理し、選択された表示実装へ渡す。
+// 単体フィルターへ渡された寸法のRGBAバッファを管理し、表示実装へ渡す。
 
 interface
 
@@ -157,6 +157,7 @@ begin
     not Assigned(Display) then
     Exit;
 
+  // 単体フィルターではObject_の寸法に画面全体の描画範囲が渡される。
   Width := Video^.Object_^.Width;
   Height := Video^.Object_^.Height;
   if (Width <= 0) or (Height <= 0) or

@@ -33,9 +33,13 @@ var
   CapturedBlackLanePixels: Integer;
   CapturedBeatLinePixels: Integer;
   CapturedCustomWhiteKeyPixels: Integer;
+  CapturedDefaultSinglePixels: Integer;
   CapturedHeight: Integer;
   CapturedMeasureLinePixels: Integer;
   CapturedOpaquePixels: Integer;
+  CapturedSingleTrackPixels: Integer;
+  CapturedStrikeLinePixels: Integer;
+  CapturedVariation1Pixels: Integer;
   CapturedWhiteKeyPixels: Integer;
   CapturedWhiteLanePixels: Integer;
   CapturedWidth: Integer;
@@ -60,7 +64,11 @@ begin
   CapturedBlackLanePixels := 0;
   CapturedBeatLinePixels := 0;
   CapturedCustomWhiteKeyPixels := 0;
+  CapturedDefaultSinglePixels := 0;
   CapturedMeasureLinePixels := 0;
+  CapturedSingleTrackPixels := 0;
+  CapturedStrikeLinePixels := 0;
+  CapturedVariation1Pixels := 0;
   CapturedWhiteKeyPixels := 0;
   CapturedWhiteLanePixels := 0;
   for I := 0 to Width * Height - 1 do
@@ -102,6 +110,26 @@ begin
       (PPixelArray(Buffer)^[I].B = 56) and
       (PPixelArray(Buffer)^[I].A = 201) then
       Inc(CapturedCustomWhiteKeyPixels);
+    if (PPixelArray(Buffer)^[I].R = 80) and
+      (PPixelArray(Buffer)^[I].G = 210) and
+      (PPixelArray(Buffer)^[I].B = 255) and
+      (PPixelArray(Buffer)^[I].A = 255) then
+      Inc(CapturedDefaultSinglePixels);
+    if (PPixelArray(Buffer)^[I].R = 7) and
+      (PPixelArray(Buffer)^[I].G = 8) and
+      (PPixelArray(Buffer)^[I].B = 9) and
+      (PPixelArray(Buffer)^[I].A = 211) then
+      Inc(CapturedSingleTrackPixels);
+    if (PPixelArray(Buffer)^[I].R = 255) and
+      (PPixelArray(Buffer)^[I].G = 255) and
+      (PPixelArray(Buffer)^[I].B = 255) and
+      (PPixelArray(Buffer)^[I].A = 160) then
+      Inc(CapturedStrikeLinePixels);
+    if (PPixelArray(Buffer)^[I].R = 255) and
+      (PPixelArray(Buffer)^[I].G = 120) and
+      (PPixelArray(Buffer)^[I].B = 180) and
+      (PPixelArray(Buffer)^[I].A = 255) then
+      Inc(CapturedVariation1Pixels);
   end;
 end;
 
@@ -129,7 +157,7 @@ begin
   Result.EndSeconds := 0.5;
   Result.Key := 60;
   Result.Velocity := 100;
-  Result.TrackIndex := 0;
+  Result.TrackIndex := 1;
 end;
 
 function TMockMusicData.GetBeatCount: Integer;
@@ -170,6 +198,7 @@ end;
 
 var
   Data: IPianoRollMusicData;
+  DefaultStrikeLinePixels: Integer;
   Display: IPianoRollDisplay;
   ObjectInfo: TOBJECT_INFO;
   Settings: TPianoRollDisplaySettings;
@@ -201,6 +230,19 @@ begin
     Check(CapturedBlackLanePixels > 0, 'black lanes were not drawn');
     Check(CapturedBeatLinePixels > 0, 'beat line was not drawn');
     Check(CapturedMeasureLinePixels > 0, 'measure line was not drawn');
+    Check(CapturedDefaultSinglePixels > 0,
+      'default single track color was not applied');
+    DefaultStrikeLinePixels := CapturedStrikeLinePixels;
+
+    // 大サイズでは基準寸法と同率で発音線も太くする。
+    Settings.KeyLength := 120;
+    Settings.KeyThickness := 40;
+    Check(RenderPianoRoll(@Video, Data, 0.0, Display, Settings),
+      'large size render failed');
+    Check(CapturedStrikeLinePixels > DefaultStrikeLinePixels,
+      'large size did not scale the strike line');
+    Settings.KeyLength := 60;
+    Settings.KeyThickness := 20;
 
     Settings.Palette.WhiteKey := PianoRollColor(12, 34, 56, 201);
     Check(RenderPianoRoll(@Video, Data, 0.0, Display, Settings),
@@ -208,6 +250,22 @@ begin
     Check(CapturedCustomWhiteKeyPixels > 0,
       'custom white key color was not applied');
 
+    // バリエーション1はトラック番号を6色パレットへ割り当てる。
+    Settings.TrackColorMode := ptcmVariation1;
+    Check(RenderPianoRoll(@Video, Data, 0.0, Display, Settings),
+      'variation 1 render failed');
+    Check(CapturedVariation1Pixels > 0,
+      'variation 1 track color was not applied');
+
+    // 単色モードではトラック番号にかかわらず指定色を使う。
+    Settings.TrackColorMode := ptcmSingleColor;
+    Settings.SingleTrackColor := PianoRollColor(7, 8, 9, 211);
+    Check(RenderPianoRoll(@Video, Data, 0.0, Display, Settings),
+      'single track color render failed');
+    Check(CapturedSingleTrackPixels > 0,
+      'single track color was not applied');
+
+    // 単体フィルターへ渡された寸法の変更を描画座標へ反映する。
     ObjectInfo.Width := 320;
     ObjectInfo.Height := 180;
     Check(RenderPianoRoll(@Video, Data, 0.0, Display, Settings),

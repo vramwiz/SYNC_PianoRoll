@@ -10,19 +10,34 @@ uses
   SYNC_PianoRoll_RGBA;
 
 type
+  // Filterの共通入口から選択する表示実装。各実装は専用ユニットに置く。
+  TPianoRollDisplayType = (
+    pdtVertical,
+    pdtHorizontal
+  );
+
+  // 基準音域から実効音域を動かす将来の追従方式。
+  TPianoRollPitchFollowMode = (
+    ppfmNone,
+    ppfmAlways,
+    ppfmOnOverflow
+  );
+
   TPianoRollDisplaySettings = record
     DisplayTime: Double;      // 発音位置から時間方向の表示端までに含める秒数。
     StrikePosition: Double;   // 時間方向の表示範囲に対する発音位置。0.0～1.0。
     TimeShift: Double;        // 音楽データとタイムラインの同期時刻差。
-    AutoKeyRange: Boolean;    // 音楽データから表示音域を自動決定する。
-    LowestKey: Integer;       // 手動音域の最低MIDIノート番号。
-    HighestKey: Integer;      // 手動音域の最高MIDIノート番号。
+    VisibleNoteCount: Integer; // 基準音域へ含める連続MIDIノート数。
+    CenterNote: Integer;       // 基準音域の中央に置くMIDIノート番号。
+    PitchFollowMode: TPianoRollPitchFollowMode; // 実効音域の追従方式。
     KeyLength: Double;        // 鍵盤が伸びる方向の長さ。
     KeyThickness: Double;     // 1鍵の音階方向の太さ。
     NoteThickness: Double;    // 音階方向レーンに対するノートの占有率。
     ShowLanes: Boolean;       // 白鍵・黒鍵に対応するレーン背景を表示する。
     ShowBeatLines: Boolean;   // 拍線と小節線を表示する。
     BeatsPerMeasure: Integer; // 1小節として強調する拍数。
+    TrackColorMode: TPianoRollTrackColorMode; // ノートへ適用する配色規則。
+    SingleTrackColor: TPianoRollColor;        // 単色配色で使うノート色。
     Palette: TPianoRollPalette;
   end;
 
@@ -35,8 +50,21 @@ type
 
 procedure SetDefaultPianoRollDisplaySettings(
   out Settings: TPianoRollDisplaySettings);
+function ScalePianoRollThickness(BaseThickness: Integer;
+  KeyThickness: Double): Integer;
 
 implementation
+
+uses
+  System.Math;
+
+function ScalePianoRollThickness(BaseThickness: Integer;
+  KeyThickness: Double): Integer;
+begin
+  // 小プリセットの20pxを基準にし、線幅も全体サイズと同率で拡大する。
+  Result := Max(1, Round(Max(1, BaseThickness) *
+    Max(1.0, KeyThickness) / 20.0));
+end;
 
 procedure SetDefaultPianoRollDisplaySettings(
   out Settings: TPianoRollDisplaySettings);
@@ -44,9 +72,9 @@ begin
   Settings.DisplayTime := 4.0;
   Settings.StrikePosition := 0.80;
   Settings.TimeShift := 0.0;
-  Settings.AutoKeyRange := False;
-  Settings.LowestKey := 0;
-  Settings.HighestKey := 127;
+  Settings.VisibleNoteCount := 128;
+  Settings.CenterNote := 64;
+  Settings.PitchFollowMode := ppfmNone;
   Settings.KeyLength := 60.0;
   Settings.KeyThickness := 20.0;
   Settings.NoteThickness := 0.80;
@@ -54,6 +82,8 @@ begin
   Settings.ShowBeatLines := True;
   Settings.BeatsPerMeasure := 4;
   SetDefaultPianoRollPalette(Settings.Palette);
+  Settings.TrackColorMode := ptcmSingleColor;
+  Settings.SingleTrackColor := Settings.Palette.TrackColors[0];
 end;
 
 end.

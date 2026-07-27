@@ -8,6 +8,28 @@ interface
 
 type
   LPCWSTR = PWideChar;
+  OBJECT_HANDLE = Pointer;
+
+  PEDIT_SECTION = ^TEDIT_SECTION;
+  TFilterItemButtonCallback = procedure(Edit: PEDIT_SECTION); cdecl;
+  TSetObjectItemValueFunc = function(Obj: OBJECT_HANDLE; Effect: LPCWSTR;
+    Item: LPCWSTR; Value: PAnsiChar): Byte; cdecl;
+  TGetFocusObjectFunc = function: OBJECT_HANDLE; cdecl;
+
+  // ボタンコールバックで、選択中オブジェクトのGUI項目を一括変更する最小編集API。
+  TEDIT_SECTION = record
+    Info: Pointer;
+    CreateObjectFromAlias: Pointer;
+    FindObject: Pointer;
+    CountObjectEffect: Pointer;
+    GetObjectLayerFrame: Pointer;
+    GetObjectAlias: Pointer;
+    GetObjectItemValue: Pointer;
+    SetObjectItemValue: TSetObjectItemValueFunc;
+    MoveObject: Pointer;
+    DeleteObject: Pointer;
+    GetFocusObject: TGetFocusObjectFunc;
+  end;
 
   PSCENE_INFO = ^TSCENE_INFO;
   TSCENE_INFO = record
@@ -78,6 +100,14 @@ type
     Name    : LPCWSTR;                   // GUI表示名兼、設定取得時の項目識別名。
     Value   : Integer;                   // 現在選択されている識別値。
     List    : ^TFILTER_ITEM_SELECT_ITEM; // nil終端された選択肢配列。
+  end;
+
+  // 選択中オブジェクトへ設定を反映する編集コールバック付きボタン。
+  PFILTER_ITEM_BUTTON = ^TFILTER_ITEM_BUTTON;
+  TFILTER_ITEM_BUTTON = record
+    ItemType: LPCWSTR;
+    Name: LPCWSTR;
+    Callback: TFilterItemButtonCallback;
   end;
 
   // SDK配置はB,G,R,X。Xは予約領域であり、描画アルファには使用しない。

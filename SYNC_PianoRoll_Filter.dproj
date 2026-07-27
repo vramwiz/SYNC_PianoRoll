@@ -9,6 +9,7 @@
         <TargetedPlatforms>2</TargetedPlatforms>
         <AppType>Library</AppType>
         <MainSource>SYNC_PianoRoll_Filter.dpr</MainSource>
+        <Base>True</Base>
     </PropertyGroup>
     <PropertyGroup>
         <GenDll>true</GenDll>
@@ -22,21 +23,34 @@
         <DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;Winapi;Vcl;$(DCC_Namespace)</DCC_Namespace>
         <SanitizedProjectName>SYNC_PianoRoll_Filter</SanitizedProjectName>
     </PropertyGroup>
+    <PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
+        <Base>true</Base>
+    </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Debug' or '$(Cfg_1)'!=''">
         <Cfg_1>true</Cfg_1>
+        <CfgParent>Base</CfgParent>
+        <Base>true</Base>
     </PropertyGroup>
     <PropertyGroup Condition="('$(Platform)'=='Win64' and '$(Cfg_1)'=='true') or '$(Cfg_1_Win64)'!=''">
         <Cfg_1_Win64>true</Cfg_1_Win64>
         <CfgParent>Cfg_1</CfgParent>
         <Cfg_1>true</Cfg_1>
+        <Base>true</Base>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Release' or '$(Cfg_2)'!=''">
         <Cfg_2>true</Cfg_2>
+        <CfgParent>Base</CfgParent>
+        <Base>true</Base>
     </PropertyGroup>
     <PropertyGroup Condition="('$(Platform)'=='Win64' and '$(Cfg_2)'=='true') or '$(Cfg_2_Win64)'!=''">
         <Cfg_2_Win64>true</Cfg_2_Win64>
         <CfgParent>Cfg_2</CfgParent>
         <Cfg_2>true</Cfg_2>
+        <Base>true</Base>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Base)'!=''">
+        <GenDll>true</GenDll>
+        <SanitizedProjectName>SYNC_PianoRoll_Filter</SanitizedProjectName>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1)'!=''">
         <BT_BuildType>Debug</BT_BuildType>
@@ -81,8 +95,7 @@
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
         <DCCReference Include="Source\Lib\AviUtl2FilterTypes.pas"/>
-        <DCCReference Include="Source\Lib\SharedMemoryBase.pas"/>
-        <DCCReference Include="Source\Common\Timeline\SYNC_PianoRoll_FrameShared.pas"/>
+        <DCCReference Include="Source\Common\Timeline\SYNC_PianoRoll_Time.pas"/>
         <DCCReference Include="Source\Lib\SongReader\RTTIPersistent.pas"/>
         <DCCReference Include="Source\Lib\SongReader\RTTIPersistentIni.pas"/>
         <DCCReference Include="Source\Lib\SongReader\SectionFileManager.pas"/>
@@ -101,20 +114,25 @@
         <DCCReference Include="Source\Lib\SongReader\SongReaderMusicMSC.pas"/>
         <DCCReference Include="Source\Lib\SongReader\SongReaderMusicMSCZ.pas"/>
         <DCCReference Include="Source\Lib\SongReader\SongReaderManager.pas"/>
-        <DCCReference Include="Source\Common\Timeline\SYNC_PianoRoll_ContextManager.pas"/>
         <DCCReference Include="Source\Common\Data\SYNC_PianoRoll_MusicData.pas"/>
         <DCCReference Include="Source\Common\Data\SYNC_PianoRoll_PianoKeys.pas"/>
         <DCCReference Include="Source\Common\Color\SYNC_PianoRoll_Colors.pas"/>
         <DCCReference Include="Source\Common\Render\SYNC_PianoRoll_RGBA.pas"/>
         <DCCReference Include="Source\Common\Layout\SYNC_PianoRoll_DisplayTypes.pas"/>
         <DCCReference Include="Source\Display\Vertical\SYNC_PianoRoll_VerticalDisplay.pas"/>
+        <DCCReference Include="Source\Display\Horizontal\SYNC_PianoRoll_HorizontalDisplay.pas"/>
         <DCCReference Include="Source\Common\Render\SYNC_PianoRoll_Renderer.pas"/>
         <DCCReference Include="Source\Plugin\Filter\SYNC_PianoRoll_FilterPlugin.pas"/>
+        <BuildConfiguration Include="Base">
+            <Key>Base</Key>
+        </BuildConfiguration>
         <BuildConfiguration Include="Debug">
             <Key>Cfg_1</Key>
+            <CfgParent>Base</CfgParent>
         </BuildConfiguration>
         <BuildConfiguration Include="Release">
             <Key>Cfg_2</Key>
+            <CfgParent>Base</CfgParent>
         </BuildConfiguration>
     </ItemGroup>
     <ProjectExtensions>

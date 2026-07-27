@@ -15,6 +15,8 @@ begin
     raise Exception.Create(MessageText);
 end;
 
+var
+  HighestNote, LowestNote: Integer;
 begin
   Check(not IsPianoBlackKey(60), 'C4 must be a white key');
   Check(IsPianoBlackKey(61), 'C sharp 4 must be a black key');
@@ -28,5 +30,17 @@ begin
     GetPianoKeyPitchCenter(60), 1.0), 'C to D position mismatch');
   Check(SameValue(GetPianoKeyPitchCenter(72) -
     GetPianoKeyPitchCenter(60), 7.0), 'octave position mismatch');
+  ResolvePianoRollPitchRange(66, 13, LowestNote, HighestNote);
+  Check((LowestNote = 60) and (HighestNote = 72),
+    'odd centered pitch range mismatch');
+  ResolvePianoRollPitchRange(64, 128, LowestNote, HighestNote);
+  Check((LowestNote = 0) and (HighestNote = 127),
+    'full pitch range mismatch');
+  ResolvePianoRollPitchRange(2, 12, LowestNote, HighestNote);
+  Check((LowestNote = 0) and (HighestNote = 11),
+    'lower edge pitch range mismatch');
+  ResolvePianoRollPitchRange(126, 12, LowestNote, HighestNote);
+  Check((LowestNote = 116) and (HighestNote = 127),
+    'upper edge pitch range mismatch');
   Writeln('PASS');
 end.

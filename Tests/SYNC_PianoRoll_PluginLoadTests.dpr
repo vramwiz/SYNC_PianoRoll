@@ -39,6 +39,10 @@ type
   PSelectListItem = ^TSelectListItem;
   TSelectListArray = array[0..2] of TSelectListItem;
   PSelectListArray = ^TSelectListArray;
+  TSizePresetListArray = array[0..3] of TSelectListItem;
+  PSizePresetListArray = ^TSizePresetListArray;
+  TPitchFollowListArray = array[0..1] of TSelectListItem;
+  PPitchFollowListArray = ^TPitchFollowListArray;
 
   TSelectItem = record
     ItemType: PWideChar;
@@ -47,6 +51,13 @@ type
     List: PSelectListItem;
   end;
   PSelectItem = ^TSelectItem;
+
+  TButtonItem = record
+    ItemType: PWideChar;
+    Name: PWideChar;
+    Callback: Pointer;
+  end;
+  PButtonItem = ^TButtonItem;
 
   TItemHeader = record
     ItemType: PWideChar;
@@ -62,7 +73,7 @@ type
   end;
   PPluginTable = ^TPluginTable;
 
-  TItemArray = array[0..20] of Pointer;
+  TItemArray = array[0..25] of Pointer;
   PItemArray = ^TItemArray;
 
 var
@@ -89,14 +100,17 @@ begin
       raise Exception.Create('plugin table is nil');
     if string(Table^.Name) <> 'SYNC_ピアノロール_Filter' then
       raise Exception.Create('plugin name mismatch');
+    // 単体映像フィルターであり、既存オブジェクトへ追加するフラグは持たない。
+    if Table^.Flag <> 1 then
+      raise Exception.Create('plugin is not registered as a standalone filter');
 
     Items := PItemArray(Table^.Items);
     if Items = nil then
       raise Exception.Create('plugin items are nil');
-    for I := 0 to 19 do
+    for I := 0 to 24 do
       if Items^[I] = nil then
         raise Exception.CreateFmt('plugin item %d is nil', [I]);
-    if Items^[20] <> nil then
+    if Items^[25] <> nil then
       raise Exception.Create('plugin items are not terminated');
     FileItem := PFileItem(Items^[0]);
     if string(FileItem^.ItemType) <> 'file' then
@@ -112,13 +126,15 @@ begin
       raise Exception.Create('strike position item mismatch');
     if string(PItemHeader(Items^[3])^.Name) <> 'ずらし (秒)' then
       raise Exception.Create('time shift item mismatch');
-    if string(PItemHeader(Items^[4])^.Name) <> '最低音' then
-      raise Exception.Create('lowest key item mismatch');
-    if string(PItemHeader(Items^[5])^.Name) <> '最高音' then
-      raise Exception.Create('highest key item mismatch');
+    if (string(PItemHeader(Items^[4])^.Name) <> '表示音階数') or
+      (PTrackItem(Items^[4])^.Value <> 128) then
+      raise Exception.Create('visible note count item mismatch');
+    if (string(PItemHeader(Items^[5])^.Name) <> '中央ノート') or
+      (PTrackItem(Items^[5])^.Value <> 64) then
+      raise Exception.Create('center note item mismatch');
     if (string(PItemHeader(Items^[6])^.ItemType) <> 'select') or
-      (string(PItemHeader(Items^[6])^.Name) <> '音域') then
-      raise Exception.Create('auto key range item mismatch');
+      (string(PItemHeader(Items^[6])^.Name) <> '音域追従') then
+      raise Exception.Create('pitch follow item mismatch');
     if string(PItemHeader(Items^[7])^.Name) <> '鍵盤の長さ' then
       raise Exception.Create('key length item mismatch');
     if string(PItemHeader(Items^[8])^.Name) <> '鍵盤の太さ' then
@@ -146,6 +162,25 @@ begin
       raise Exception.Create('measure line color item mismatch');
     if string(PItemHeader(Items^[19])^.Name) <> '発音線色' then
       raise Exception.Create('strike line color item mismatch');
+    if (string(PItemHeader(Items^[20])^.ItemType) <> 'select') or
+      (string(PItemHeader(Items^[20])^.Name) <> 'ノート配色') or
+      (PSelectItem(Items^[20])^.Value <> 0) then
+      raise Exception.Create('track color mode item mismatch');
+    if (string(PItemHeader(Items^[21])^.ItemType) <> 'color') or
+      (string(PItemHeader(Items^[21])^.Name) <> 'ノート単色') then
+      raise Exception.Create('single track color item mismatch');
+    if (string(PItemHeader(Items^[22])^.ItemType) <> 'select') or
+      (string(PItemHeader(Items^[22])^.Name) <> '表示タイプ') or
+      (PSelectItem(Items^[22])^.Value <> 0) then
+      raise Exception.Create('display type item mismatch');
+    if (string(PItemHeader(Items^[23])^.ItemType) <> 'select') or
+      (string(PItemHeader(Items^[23])^.Name) <> 'サイズ初期値') or
+      (PSelectItem(Items^[23])^.Value <> 0) then
+      raise Exception.Create('size preset item mismatch');
+    if (string(PItemHeader(Items^[24])^.ItemType) <> 'button') or
+      (string(PItemHeader(Items^[24])^.Name) <> 'サイズ初期値を適用') or
+      (PButtonItem(Items^[24])^.Callback = nil) then
+      raise Exception.Create('size preset button mismatch');
     if (PColorItem(Items^[13])^.R <> 242) or
       (PColorItem(Items^[13])^.G <> 242) or
       (PColorItem(Items^[13])^.B <> 242) or
@@ -156,13 +191,46 @@ begin
       (PColorItem(Items^[18])^.B <> 80) or
       (PColorItem(Items^[18])^.X <> 0) then
       raise Exception.Create('measure line default color mismatch');
+    if (PColorItem(Items^[21])^.R <> 80) or
+      (PColorItem(Items^[21])^.G <> 210) or
+      (PColorItem(Items^[21])^.B <> 255) or
+      (PColorItem(Items^[21])^.X <> 0) then
+      raise Exception.Create('single track default color mismatch');
 
     if (PSelectItem(Items^[6])^.List = nil) or
-      (PSelectListArray(PSelectItem(Items^[6])^.List)^[2].Name <> nil) then
-      raise Exception.Create('key range select list is not terminated');
+      (string(PPitchFollowListArray(
+        PSelectItem(Items^[6])^.List)^[0].Name) <> '追従しない') or
+      (PPitchFollowListArray(
+        PSelectItem(Items^[6])^.List)^[1].Name <> nil) then
+      raise Exception.Create('pitch follow select list mismatch');
     if (PSelectItem(Items^[10])^.List = nil) or
       (PSelectListArray(PSelectItem(Items^[10])^.List)^[2].Name <> nil) then
       raise Exception.Create('visibility select list is not terminated');
+    if (PSelectItem(Items^[20])^.List = nil) or
+      (string(PSelectListArray(PSelectItem(Items^[20])^.List)^[0].Name) <>
+        '単色') or
+      (string(PSelectListArray(PSelectItem(Items^[20])^.List)^[1].Name) <>
+        'バリエーション1') or
+      (PSelectListArray(PSelectItem(Items^[20])^.List)^[2].Name <> nil) then
+      raise Exception.Create('track color mode list mismatch');
+    if (PSelectItem(Items^[22])^.List = nil) or
+      (string(PSelectListArray(
+        PSelectItem(Items^[22])^.List)^[0].Name) <> '縦') or
+      (string(PSelectListArray(
+        PSelectItem(Items^[22])^.List)^[1].Name) <> '横') or
+      (PSelectListArray(
+        PSelectItem(Items^[22])^.List)^[2].Name <> nil) then
+      raise Exception.Create('display type list mismatch');
+    if (PSelectItem(Items^[23])^.List = nil) or
+      (string(PSizePresetListArray(
+        PSelectItem(Items^[23])^.List)^[0].Name) <> '小') or
+      (string(PSizePresetListArray(
+        PSelectItem(Items^[23])^.List)^[1].Name) <> '中') or
+      (string(PSizePresetListArray(
+        PSelectItem(Items^[23])^.List)^[2].Name) <> '大') or
+      (PSizePresetListArray(
+        PSelectItem(Items^[23])^.List)^[3].Name <> nil) then
+      raise Exception.Create('size preset list mismatch');
     Writeln('PASS');
   finally
     FreeLibrary(ModuleHandle);

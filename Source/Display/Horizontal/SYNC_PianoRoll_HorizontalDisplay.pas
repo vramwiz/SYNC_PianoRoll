@@ -1,13 +1,13 @@
-﻿unit SYNC_PianoRoll_VerticalDisplay;
+﻿unit SYNC_PianoRoll_HorizontalDisplay;
 
-// 時間方向を下向き、音階方向を左から右へ割り当てる縦表示を実装する。
+// 時間方向を右向き、音階方向を上から下へ割り当てる横表示を実装する。
 
 interface
 
 uses
   SYNC_PianoRoll_DisplayTypes;
 
-function CreateVerticalPianoRollDisplay: IPianoRollDisplay;
+function CreateHorizontalPianoRollDisplay: IPianoRollDisplay;
 
 implementation
 
@@ -20,7 +20,7 @@ uses
   SYNC_PianoRoll_RGBA;
 
 type
-  TVerticalPianoRollDisplay = class(TInterfacedObject, IPianoRollDisplay)
+  THorizontalPianoRollDisplay = class(TInterfacedObject, IPianoRollDisplay)
   private
     procedure DrawBeatLines(var Canvas: TPianoRollCanvas;
       const Data: IPianoRollMusicData; TimeSeconds, PixelsPerSecond: Double;
@@ -31,7 +31,7 @@ type
     procedure DrawLanes(var Canvas: TPianoRollCanvas;
       StrikePosition, LowestKey, HighestKey: Integer;
       const Settings: TPianoRollDisplaySettings);
-    procedure GetKeyAxisBounds(CanvasWidth, MidiKey, LowestKey,
+    procedure GetKeyAxisBounds(CanvasHeight, MidiKey, LowestKey,
       HighestKey: Integer; KeyThickness: Double;
       out StartPosition, EndPosition: Integer);
   public
@@ -40,7 +40,7 @@ type
       const Settings: TPianoRollDisplaySettings);
   end;
 
-procedure TVerticalPianoRollDisplay.DrawBeatLines(
+procedure THorizontalPianoRollDisplay.DrawBeatLines(
   var Canvas: TPianoRollCanvas; const Data: IPianoRollMusicData;
   TimeSeconds, PixelsPerSecond: Double; StrikePosition: Integer;
   const Settings: TPianoRollDisplaySettings);
@@ -55,9 +55,10 @@ begin
   for I := 0 to Data.BeatCount - 1 do
   begin
     Beat := Data.Beats[I];
-    BeatPosition := StrikePosition -
+    BeatPosition := StrikePosition +
       Round((Beat.Seconds - TimeSeconds) * PixelsPerSecond);
-    if (BeatPosition < 0) or (BeatPosition >= StrikePosition) then
+    if (BeatPosition <= StrikePosition) or
+      (BeatPosition >= Canvas.Width) then
       Continue;
 
     if (Beat.Index mod MeasureLength) = 0 then
@@ -70,13 +71,13 @@ begin
       LineColor := Settings.Palette.BeatLine;
       LineThickness := ScalePianoRollThickness(1, Settings.KeyThickness);
     end;
-    Canvas.FillRectangle(0, BeatPosition, Canvas.Width,
-      BeatPosition + LineThickness, LineColor);
+    Canvas.FillRectangle(BeatPosition, 0,
+      BeatPosition + LineThickness, Canvas.Height, LineColor);
   end;
 end;
 
-procedure TVerticalPianoRollDisplay.GetKeyAxisBounds(CanvasWidth, MidiKey,
-  LowestKey, HighestKey: Integer; KeyThickness: Double;
+procedure THorizontalPianoRollDisplay.GetKeyAxisBounds(CanvasHeight,
+  MidiKey, LowestKey, HighestKey: Integer; KeyThickness: Double;
   out StartPosition, EndPosition: Integer);
 var
   AxisCenter, KeyCenter, RangeCenter, VisibleThickness: Double;
@@ -85,7 +86,8 @@ begin
   RangeCenter := (GetPianoKeyPitchCenter(LowestKey) +
     GetPianoKeyPitchCenter(HighestKey)) * 0.5;
   KeyCenter := GetPianoKeyPitchCenter(MidiKey);
-  AxisCenter := CanvasWidth * 0.5 +
+  // 横表示は高音ほど画面上側へ配置する。
+  AxisCenter := CanvasHeight * 0.5 -
     (KeyCenter - RangeCenter) * KeyThickness;
   if IsPianoBlackKey(MidiKey) then
     VisibleThickness := KeyThickness * 0.62
@@ -97,7 +99,7 @@ begin
     EndPosition := StartPosition + 1;
 end;
 
-procedure TVerticalPianoRollDisplay.DrawLanes(
+procedure THorizontalPianoRollDisplay.DrawLanes(
   var Canvas: TPianoRollCanvas; StrikePosition, LowestKey,
   HighestKey: Integer; const Settings: TPianoRollDisplaySettings);
 var
@@ -110,66 +112,67 @@ begin
   for Key := LowestKey to HighestKey do
     if not IsPianoBlackKey(Key) then
     begin
-      GetKeyAxisBounds(Canvas.Width, Key, LowestKey, HighestKey,
+      GetKeyAxisBounds(Canvas.Height, Key, LowestKey, HighestKey,
         Settings.KeyThickness, StartPosition, EndPosition);
-      Canvas.FillRectangle(StartPosition, 0, EndPosition, StrikePosition,
-        Settings.Palette.WhiteLane);
+      Canvas.FillRectangle(StrikePosition, StartPosition, Canvas.Width,
+        EndPosition, Settings.Palette.WhiteLane);
     end;
 
   for Key := LowestKey to HighestKey do
     if IsPianoBlackKey(Key) then
     begin
-      GetKeyAxisBounds(Canvas.Width, Key, LowestKey, HighestKey,
+      GetKeyAxisBounds(Canvas.Height, Key, LowestKey, HighestKey,
         Settings.KeyThickness, StartPosition, EndPosition);
-      Canvas.FillRectangle(StartPosition, 0, EndPosition, StrikePosition,
-        Settings.Palette.BlackLane);
+      Canvas.FillRectangle(StrikePosition, StartPosition, Canvas.Width,
+        EndPosition, Settings.Palette.BlackLane);
     end;
 end;
 
-procedure TVerticalPianoRollDisplay.DrawKeyboard(
+procedure THorizontalPianoRollDisplay.DrawKeyboard(
   var Canvas: TPianoRollCanvas; StrikePosition, LowestKey,
   HighestKey: Integer; const Settings: TPianoRollDisplaySettings);
 var
   EndPosition, Key, StartPosition: Integer;
-  KeyboardBottom, KeyboardTop: Integer;
+  KeyboardLeft, KeyboardRight: Integer;
 begin
   if Settings.KeyLength <= 0 then
     Exit;
-  KeyboardTop := StrikePosition + 2;
-  KeyboardBottom := KeyboardTop + Round(Settings.KeyLength);
+  KeyboardRight := StrikePosition - 2;
+  KeyboardLeft := KeyboardRight - Round(Settings.KeyLength);
 
-  // 白鍵を先に並べ、境界線を付ける。
+  // 白鍵を先に並べ、音階方向の境界線を付ける。
   for Key := LowestKey to HighestKey do
     if not IsPianoBlackKey(Key) then
     begin
-      GetKeyAxisBounds(Canvas.Width, Key, LowestKey, HighestKey,
+      GetKeyAxisBounds(Canvas.Height, Key, LowestKey, HighestKey,
         Settings.KeyThickness, StartPosition, EndPosition);
-      Canvas.FillRectangle(StartPosition, KeyboardTop, EndPosition,
-        KeyboardBottom, Settings.Palette.WhiteKey);
-      Canvas.FillRectangle(StartPosition, KeyboardTop, StartPosition +
-        ScalePianoRollThickness(1, Settings.KeyThickness),
-        KeyboardBottom, Settings.Palette.KeyBorder);
+      Canvas.FillRectangle(KeyboardLeft, StartPosition, KeyboardRight,
+        EndPosition, Settings.Palette.WhiteKey);
+      Canvas.FillRectangle(KeyboardLeft, StartPosition, KeyboardRight,
+        StartPosition + ScalePianoRollThickness(
+          1, Settings.KeyThickness), Settings.Palette.KeyBorder);
     end;
 
-  // 黒鍵は白鍵の上へ重ねる。
+  // 黒鍵は発音位置側へ寄せ、白鍵の上へ重ねる。
   for Key := LowestKey to HighestKey do
     if IsPianoBlackKey(Key) then
     begin
-      GetKeyAxisBounds(Canvas.Width, Key, LowestKey, HighestKey,
+      GetKeyAxisBounds(Canvas.Height, Key, LowestKey, HighestKey,
         Settings.KeyThickness, StartPosition, EndPosition);
-      Canvas.FillRectangle(StartPosition, KeyboardTop, EndPosition,
-        KeyboardTop + Round(Settings.KeyLength * 0.62),
+      Canvas.FillRectangle(
+        KeyboardRight - Round(Settings.KeyLength * 0.62),
+        StartPosition, KeyboardRight, EndPosition,
         Settings.Palette.BlackKey);
     end;
 end;
 
-procedure TVerticalPianoRollDisplay.Draw(var Canvas: TPianoRollCanvas;
+procedure THorizontalPianoRollDisplay.Draw(var Canvas: TPianoRollCanvas;
   const Data: IPianoRollMusicData; TimeSeconds: Double;
   const Settings: TPianoRollDisplaySettings);
 var
   BottomPosition, EndPosition, I: Integer;
-  LaneLeft, LaneRight, NoteLeft, NoteRight: Integer;
-  StartPosition, StrikePosition, TopPosition: Integer;
+  LaneBottom, LaneTop, NoteBottom, NoteTop: Integer;
+  LeftPosition, RightPosition, StartPosition, StrikePosition: Integer;
   EndSeconds, PixelsPerSecond, Thickness: Double;
   HighestKey, LowestKey: Integer;
   Note: TPianoRollNoteData;
@@ -180,21 +183,24 @@ begin
   // 現在は基準音域をそのまま実効音域とし、追従方式は後から接続する。
   ResolvePianoRollPitchRange(Settings.CenterNote, Settings.VisibleNoteCount,
     LowestKey, HighestKey);
+  // 共通の80%は発音位置から未来側に確保する時間方向の割合を表す。
   StrikePosition := EnsureRange(
-    Round(Canvas.Height * Settings.StrikePosition), 0, Canvas.Height - 1);
+    Round(Canvas.Width * (1.0 - Settings.StrikePosition)),
+    0, Canvas.Width - 1);
   DrawLanes(Canvas, StrikePosition, LowestKey, HighestKey, Settings);
   TimeSeconds := TimeSeconds - Settings.TimeShift;
   PixelsPerSecond := 0.0;
   if Settings.DisplayTime > 0 then
   begin
-    PixelsPerSecond := Max(1, StrikePosition) / Settings.DisplayTime;
+    PixelsPerSecond := Max(1, Canvas.Width - StrikePosition) /
+      Settings.DisplayTime;
     DrawBeatLines(Canvas, Data, TimeSeconds, PixelsPerSecond,
       StrikePosition, Settings);
   end;
   DrawKeyboard(Canvas, StrikePosition, LowestKey, HighestKey, Settings);
-  Canvas.FillRectangle(0, StrikePosition, Canvas.Width, StrikePosition +
+  Canvas.FillRectangle(StrikePosition, 0, StrikePosition +
     ScalePianoRollThickness(2, Settings.KeyThickness),
-    Settings.Palette.StrikeLine);
+    Canvas.Height, Settings.Palette.StrikeLine);
 
   if Settings.DisplayTime <= 0 then
     Exit;
@@ -211,30 +217,33 @@ begin
     if EndSeconds < TimeSeconds then
       Continue;
 
-    StartPosition := StrikePosition -
+    StartPosition := StrikePosition +
       Round((Note.StartSeconds - TimeSeconds) * PixelsPerSecond);
-    EndPosition := StrikePosition -
+    EndPosition := StrikePosition +
       Round((EndSeconds - TimeSeconds) * PixelsPerSecond);
-    TopPosition := Min(StartPosition, EndPosition);
-    BottomPosition := Min(StrikePosition, Max(StartPosition, EndPosition));
-    if (BottomPosition < 0) or (TopPosition >= Canvas.Height) then
+    LeftPosition := Max(StrikePosition, Min(StartPosition, EndPosition));
+    RightPosition := Max(StartPosition, EndPosition);
+    if (RightPosition < 0) or (LeftPosition >= Canvas.Width) then
       Continue;
 
-    GetKeyAxisBounds(Canvas.Width, Note.Key, LowestKey, HighestKey,
-      Settings.KeyThickness, LaneLeft, LaneRight);
-    NoteLeft := LaneLeft +
-      Round((LaneRight - LaneLeft) * (1.0 - Thickness) / 2.0);
-    NoteRight := LaneRight -
-      Round((LaneRight - LaneLeft) * (1.0 - Thickness) / 2.0);
-    Canvas.FillRectangle(NoteLeft, TopPosition, Max(NoteLeft + 1, NoteRight),
-      BottomPosition, ResolvePianoRollTrackColor(Note.TrackIndex,
-        Settings.TrackColorMode, Settings.SingleTrackColor, Settings.Palette));
+    GetKeyAxisBounds(Canvas.Height, Note.Key, LowestKey, HighestKey,
+      Settings.KeyThickness, LaneTop, LaneBottom);
+    NoteTop := LaneTop +
+      Round((LaneBottom - LaneTop) * (1.0 - Thickness) / 2.0);
+    NoteBottom := LaneBottom -
+      Round((LaneBottom - LaneTop) * (1.0 - Thickness) / 2.0);
+    BottomPosition := Max(NoteTop + 1, NoteBottom);
+    Canvas.FillRectangle(LeftPosition, NoteTop,
+      Max(LeftPosition + 1, RightPosition), BottomPosition,
+      ResolvePianoRollTrackColor(Note.TrackIndex,
+        Settings.TrackColorMode, Settings.SingleTrackColor,
+        Settings.Palette));
   end;
 end;
 
-function CreateVerticalPianoRollDisplay: IPianoRollDisplay;
+function CreateHorizontalPianoRollDisplay: IPianoRollDisplay;
 begin
-  Result := TVerticalPianoRollDisplay.Create;
+  Result := THorizontalPianoRollDisplay.Create;
 end;
 
 end.

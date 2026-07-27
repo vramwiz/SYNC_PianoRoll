@@ -7,8 +7,7 @@
 uses
   Winapi.Windows,
   AviUtl2FilterTypes in 'Source\Lib\AviUtl2FilterTypes.pas',
-  SharedMemoryBase in 'Source\Lib\SharedMemoryBase.pas',
-  SYNC_PianoRoll_FrameShared in 'Source\Common\Timeline\SYNC_PianoRoll_FrameShared.pas',
+  SYNC_PianoRoll_Time in 'Source\Common\Timeline\SYNC_PianoRoll_Time.pas',
   RTTIPersistent in 'Source\Lib\SongReader\RTTIPersistent.pas',
   RTTIPersistentIni in 'Source\Lib\SongReader\RTTIPersistentIni.pas',
   SectionFileManager in 'Source\Lib\SongReader\SectionFileManager.pas',
@@ -27,13 +26,13 @@ uses
   SongReaderMusicMSC in 'Source\Lib\SongReader\SongReaderMusicMSC.pas',
   SongReaderMusicMSCZ in 'Source\Lib\SongReader\SongReaderMusicMSCZ.pas',
   SongReaderManager in 'Source\Lib\SongReader\SongReaderManager.pas',
-  SYNC_PianoRoll_ContextManager in 'Source\Common\Timeline\SYNC_PianoRoll_ContextManager.pas',
   SYNC_PianoRoll_MusicData in 'Source\Common\Data\SYNC_PianoRoll_MusicData.pas',
   SYNC_PianoRoll_PianoKeys in 'Source\Common\Data\SYNC_PianoRoll_PianoKeys.pas',
   SYNC_PianoRoll_Colors in 'Source\Common\Color\SYNC_PianoRoll_Colors.pas',
   SYNC_PianoRoll_RGBA in 'Source\Common\Render\SYNC_PianoRoll_RGBA.pas',
   SYNC_PianoRoll_DisplayTypes in 'Source\Common\Layout\SYNC_PianoRoll_DisplayTypes.pas',
   SYNC_PianoRoll_VerticalDisplay in 'Source\Display\Vertical\SYNC_PianoRoll_VerticalDisplay.pas',
+  SYNC_PianoRoll_HorizontalDisplay in 'Source\Display\Horizontal\SYNC_PianoRoll_HorizontalDisplay.pas',
   SYNC_PianoRoll_Renderer in 'Source\Common\Render\SYNC_PianoRoll_Renderer.pas',
   SYNC_PianoRoll_FilterPlugin in 'Source\Plugin\Filter\SYNC_PianoRoll_FilterPlugin.pas';
 

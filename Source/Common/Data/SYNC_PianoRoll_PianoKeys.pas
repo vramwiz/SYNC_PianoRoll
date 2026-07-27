@@ -6,8 +6,13 @@ interface
 
 function IsPianoBlackKey(MidiKey: Integer): Boolean;
 function GetPianoKeyPitchCenter(MidiKey: Integer): Double;
+procedure ResolvePianoRollPitchRange(CenterNote, VisibleNoteCount: Integer;
+  out LowestNote, HighestNote: Integer);
 
 implementation
+
+uses
+  System.Math;
 
 const
   // 各キーの中心位置。1.0が白鍵1個分の音階方向距離を表す。
@@ -38,6 +43,27 @@ begin
     Dec(OctaveIndex);
   end;
   Result := OctaveIndex * 7.0 + PITCH_CENTER_IN_OCTAVE[PitchClass];
+end;
+
+procedure ResolvePianoRollPitchRange(CenterNote, VisibleNoteCount: Integer;
+  out LowestNote, HighestNote: Integer);
+begin
+  CenterNote := EnsureRange(CenterNote, 0, 127);
+  VisibleNoteCount := EnsureRange(VisibleNoteCount, 1, 128);
+
+  // 偶数個では中央ノートを上側の中央とし、常に指定個数を維持する。
+  LowestNote := CenterNote - VisibleNoteCount div 2;
+  HighestNote := LowestNote + VisibleNoteCount - 1;
+  if LowestNote < 0 then
+  begin
+    LowestNote := 0;
+    HighestNote := VisibleNoteCount - 1;
+  end
+  else if HighestNote > 127 then
+  begin
+    HighestNote := 127;
+    LowestNote := 128 - VisibleNoteCount;
+  end;
 end;
 
 end.
