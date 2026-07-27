@@ -1,6 +1,6 @@
 ﻿program SYNC_PianoRoll_FilterSettingsTests;
 
-// 実Filter DLLへ音域項目値を渡し、描画結果へ反映されることを検証する。
+// 実Filter DLLの音域設定とサイズプリセットが描画項目へ反映されることを検証する。
 
 {$APPTYPE CONSOLE}
 
@@ -23,6 +23,7 @@ var
   CapturedPresetLength: string;
   CapturedPresetNoteThickness: string;
   CapturedPresetThickness: string;
+  CapturedTrackPixels: Integer;
 
 procedure Check(Condition: Boolean; const MessageText: string);
 begin
@@ -38,9 +39,17 @@ var
   I: Integer;
 begin
   CapturedOpaquePixels := 0;
+  CapturedTrackPixels := 0;
   for I := 0 to Width * Height - 1 do
+  begin
     if PPixelArray(Buffer)^[I].A <> 0 then
       Inc(CapturedOpaquePixels);
+    if (PPixelArray(Buffer)^[I].R = 80) and
+      (PPixelArray(Buffer)^[I].G = 210) and
+      (PPixelArray(Buffer)^[I].B = 255) and
+      (PPixelArray(Buffer)^[I].A = 255) then
+      Inc(CapturedTrackPixels);
+  end;
 end;
 
 function GetMockFocusObject: OBJECT_HANDLE; cdecl;
@@ -154,6 +163,22 @@ begin
       Check(SingleRangePixels < FullRangePixels,
         'pitch range settings did not change the rendered pixels');
 
+      // 基準音域外のノートは追従なしでは隠れ、両追従方式では表示される。
+      PFILTER_ITEM_TRACK(Items^[4])^.Value := 12;
+      PFILTER_ITEM_TRACK(Items^[5])^.Value := 0;
+      PFILTER_ITEM_SELECT(Items^[6])^.Value := 0;
+      Table^.Func_Proc_Video(@Video);
+      Check(CapturedTrackPixels = 0,
+        'none follow unexpectedly moved the pitch range');
+      PFILTER_ITEM_SELECT(Items^[6])^.Value := 1;
+      Table^.Func_Proc_Video(@Video);
+      Check(CapturedTrackPixels > 0,
+        'always follow did not move the pitch range');
+      PFILTER_ITEM_SELECT(Items^[6])^.Value := 2;
+      Table^.Func_Proc_Video(@Video);
+      Check(CapturedTrackPixels > 0,
+        'overflow follow did not move the pitch range');
+
       // 大プリセットのボタンでローカル値と選択中オブジェクトを同時に更新する。
       FillChar(Edit, SizeOf(Edit), 0);
       Edit.GetFocusObject := GetMockFocusObject;
@@ -163,14 +188,14 @@ begin
       CapturedPresetNoteThickness := '';
       PFILTER_ITEM_SELECT(Items^[23])^.Value := 2;
       PFILTER_ITEM_BUTTON(Items^[24])^.Callback(@Edit);
-      Check(PFILTER_ITEM_TRACK(Items^[7])^.Value = 120,
+      Check(PFILTER_ITEM_TRACK(Items^[7])^.Value = 180,
         'large preset local key length mismatch');
-      Check(PFILTER_ITEM_TRACK(Items^[8])^.Value = 40,
+      Check(PFILTER_ITEM_TRACK(Items^[8])^.Value = 60,
         'large preset local key thickness mismatch');
       Check(PFILTER_ITEM_TRACK(Items^[9])^.Value = 80,
         'large preset local note thickness mismatch');
-      Check((CapturedPresetLength = '120') and
-        (CapturedPresetThickness = '40') and
+      Check((CapturedPresetLength = '180') and
+        (CapturedPresetThickness = '60') and
         (CapturedPresetNoteThickness = '80'),
         'large preset object values mismatch');
       Writeln(Format('PASS full=%d single=%d',

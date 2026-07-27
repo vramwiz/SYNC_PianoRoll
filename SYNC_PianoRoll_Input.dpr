@@ -1,6 +1,6 @@
 ﻿library SYNC_PianoRoll_Input;
 
-// ピアノロール描画用の時刻ベースを提供する AviUtl2 入力プラグイン。
+// 標準変形を使うピアノロール用の透明ベース映像を提供するAviUtl2入力境界。
 
 uses
   Winapi.Windows,

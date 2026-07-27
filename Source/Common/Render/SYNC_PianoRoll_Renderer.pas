@@ -1,6 +1,6 @@
 ﻿unit SYNC_PianoRoll_Renderer;
 
-// 単体フィルターへ渡された寸法のRGBAバッファを管理し、表示実装へ渡す。
+// Filter対象の寸法ごとにRGBAバッファを管理し、選択された表示実装へ渡す。
 
 interface
 
@@ -97,6 +97,7 @@ end;
 function TPianoRollRenderContextList.GetOrCreate(ObjectID,
   EffectID: Int64): TPianoRollRenderContext;
 begin
+  // 一覧の生成だけを直列化し、実際の描画はオブジェクト別ロックへ分離する。
   FLock.Acquire;
   try
     Result := FindByKey(ObjectID, EffectID);
@@ -157,7 +158,7 @@ begin
     not Assigned(Display) then
     Exit;
 
-  // 単体フィルターではObject_の寸法に画面全体の描画範囲が渡される。
+  // 単体配置ではシーン寸法、Input＋Filterではベース画像寸法がここへ渡される。
   Width := Video^.Object_^.Width;
   Height := Video^.Object_^.Height;
   if (Width <= 0) or (Height <= 0) or
@@ -177,6 +178,7 @@ begin
 
   Context.Lock.Acquire;
   try
+    // 同一オブジェクトの再入を防ぎつつ、異なるオブジェクトは並列に描画する。
     if not EnsureBuffer(Context, BufferSize64) then
       Exit;
     Canvas.Initialize(Context.Buffer, Width, Height);

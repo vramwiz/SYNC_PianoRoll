@@ -12,6 +12,7 @@ uses
   SYNC_PianoRoll_Colors in 'Source\Common\Color\SYNC_PianoRoll_Colors.pas',
   SYNC_PianoRoll_RGBA in 'Source\Common\Render\SYNC_PianoRoll_RGBA.pas',
   SYNC_PianoRoll_DisplayTypes in 'Source\Common\Layout\SYNC_PianoRoll_DisplayTypes.pas',
+  SYNC_PianoRoll_PitchFollow in 'Source\Common\Layout\SYNC_PianoRoll_PitchFollow.pas',
   SYNC_PianoRoll_HorizontalDisplay in 'Source\Display\Horizontal\SYNC_PianoRoll_HorizontalDisplay.pas',
   SYNC_PianoRoll_Renderer in 'Source\Common\Render\SYNC_PianoRoll_Renderer.pas';
 
@@ -30,8 +31,10 @@ type
 
 var
   CapturedBeatLine: Boolean;
+  CapturedActiveKey: Boolean;
   CapturedBlackKey: Boolean;
   CapturedBlackLane: Boolean;
+  CapturedGlow: Boolean;
   CapturedHeight: Integer;
   CapturedKeyboardLeftOfStrike: Boolean;
   CapturedMeasureLine: Boolean;
@@ -51,6 +54,10 @@ type
   TPixelArray = array[0..(MaxInt div SizeOf(TPIXEL_RGBA)) - 1] of TPIXEL_RGBA;
   PPixelArray = ^TPixelArray;
 
+var
+  I, X: Integer;
+  Pixel: TPIXEL_RGBA;
+
   function Matches(X, Y, R, G, B, A: Integer): Boolean;
   var
     Pixel: TPIXEL_RGBA;
@@ -65,6 +72,8 @@ type
 begin
   CapturedWidth := Width;
   CapturedHeight := Height;
+  CapturedActiveKey := False;
+  CapturedGlow := False;
   // 320x240、発音位置75%では発音線がX=80、未来側が右になる。
   CapturedStrikeLine := Matches(80, 10, 255, 255, 255, 160);
   CapturedKeyboardLeftOfStrike := Matches(30, 190, 242, 242, 242, 255);
@@ -74,6 +83,17 @@ begin
   CapturedBlackLane := Matches(250, 176, 110, 110, 120, 24);
   CapturedMeasureLine := Matches(110, 10, 255, 190, 80, 120);
   CapturedBeatLine := Matches(140, 10, 255, 255, 255, 48);
+  for I := 0 to Width * Height - 1 do
+  begin
+    Pixel := PPixelArray(Buffer)^[I];
+    X := I mod Width;
+    if (X < 78) and (Pixel.R = 80) and (Pixel.G = 210) and
+      (Pixel.B = 255) and (Pixel.A = 255) then
+      CapturedActiveKey := True;
+    if (Pixel.R > 220) and (Pixel.G > 220) and (Pixel.B > 220) and
+      (Pixel.A > 200) and (X >= 80) and (X <= 92) then
+      CapturedGlow := True;
+  end;
 end;
 
 function TMockMusicData.GetFileName: string;
@@ -157,6 +177,9 @@ begin
   Data := TMockMusicData.Create;
   Display := CreateHorizontalPianoRollDisplay;
   SetDefaultPianoRollDisplaySettings(Settings);
+  // 固定画素の座標検証では初期プリセット変更の影響を受けない検査寸法を明示する。
+  Settings.KeyLength := 60;
+  Settings.KeyThickness := 20;
   Settings.StrikePosition := 0.75;
   Settings.VisibleNoteCount := 13;
   Settings.CenterNote := 66;
@@ -177,6 +200,20 @@ begin
     Check(CapturedBlackLane, 'horizontal black lane was not drawn');
     Check(CapturedMeasureLine, 'horizontal measure line was not drawn');
     Check(CapturedBeatLine, 'horizontal beat line was not drawn');
+    Check(not CapturedActiveKey and not CapturedGlow,
+      'future horizontal note was highlighted before sounding');
+    Check(RenderPianoRoll(@Video, Data, 0.5, Display, Settings),
+      'active horizontal render failed');
+    Check(CapturedActiveKey, 'active horizontal key was not highlighted');
+    Check(CapturedGlow, 'horizontal strike glow was not drawn');
+    Check(RenderPianoRoll(@Video, Data, 0.90, Display, Settings),
+      'sustained horizontal render failed');
+    Check(CapturedActiveKey and not CapturedGlow,
+      'horizontal glow did not decay independently of the active key');
+    Check(RenderPianoRoll(@Video, Data, 1.0, Display, Settings),
+      'inactive horizontal render failed');
+    Check(not CapturedActiveKey and not CapturedGlow,
+      'horizontal strike highlight remained after note end');
     Writeln('PASS');
   finally
     Display := nil;

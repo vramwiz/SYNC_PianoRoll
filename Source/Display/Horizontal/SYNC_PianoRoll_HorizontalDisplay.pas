@@ -17,7 +17,11 @@ uses
   SYNC_PianoRoll_Colors,
   SYNC_PianoRoll_MusicData,
   SYNC_PianoRoll_PianoKeys,
+  SYNC_PianoRoll_PitchFollow,
   SYNC_PianoRoll_RGBA;
+
+const
+  STRIKE_GLOW_DURATION = 0.35;
 
 type
   THorizontalPianoRollDisplay = class(TInterfacedObject, IPianoRollDisplay)
@@ -31,6 +35,14 @@ type
     procedure DrawLanes(var Canvas: TPianoRollCanvas;
       StrikePosition, LowestKey, HighestKey: Integer;
       const Settings: TPianoRollDisplaySettings);
+    procedure DrawActiveKeys(var Canvas: TPianoRollCanvas;
+      const Data: IPianoRollMusicData; TimeSeconds: Double;
+      StrikePosition, LowestKey, HighestKey: Integer;
+      const Settings: TPianoRollDisplaySettings);
+    procedure DrawStrikeGlow(var Canvas: TPianoRollCanvas;
+      const Data: IPianoRollMusicData; TimeSeconds: Double;
+      StrikePosition, LowestKey, HighestKey: Integer;
+      const Settings: TPianoRollDisplaySettings);
     procedure GetKeyAxisBounds(CanvasHeight, MidiKey, LowestKey,
       HighestKey: Integer; KeyThickness: Double;
       out StartPosition, EndPosition: Integer);
@@ -39,6 +51,87 @@ type
       const Data: IPianoRollMusicData; TimeSeconds: Double;
       const Settings: TPianoRollDisplaySettings);
   end;
+
+function IsNoteActiveAtTime(const Note: TPianoRollNoteData;
+  TimeSeconds: Double): Boolean;
+var
+  EndSeconds: Double;
+begin
+  // 発音開始の一瞬だけでなく打鍵中を点灯し、短いノートも映像上で認識できるようにする。
+  EndSeconds := Note.EndSeconds;
+  if EndSeconds < Note.StartSeconds then
+    EndSeconds := Note.StartSeconds + 0.2;
+  Result := (TimeSeconds >= Note.StartSeconds) and
+    (TimeSeconds < EndSeconds);
+end;
+
+procedure THorizontalPianoRollDisplay.DrawActiveKeys(
+  var Canvas: TPianoRollCanvas; const Data: IPianoRollMusicData;
+  TimeSeconds: Double; StrikePosition, LowestKey, HighestKey: Integer;
+  const Settings: TPianoRollDisplaySettings);
+var
+  Color: TPianoRollColor;
+  EndPosition, I, StartPosition: Integer;
+  KeyboardLeft, KeyboardRight: Integer;
+  Note: TPianoRollNoteData;
+begin
+  if Settings.KeyLength <= 0 then
+    Exit;
+  KeyboardRight := StrikePosition - 2;
+  KeyboardLeft := KeyboardRight - Round(Settings.KeyLength);
+  for I := 0 to Data.NoteCount - 1 do
+  begin
+    Note := Data.Notes[I];
+    if not IsNoteActiveAtTime(Note, TimeSeconds) or
+      (Note.Key < LowestKey) or (Note.Key > HighestKey) then
+      Continue;
+    Color := ResolvePianoRollTrackColor(Note.TrackIndex,
+      Settings.TrackColorMode, Settings.SingleTrackColor, Settings.Palette);
+    GetKeyAxisBounds(Canvas.Height, Note.Key, LowestKey, HighestKey,
+      Settings.KeyThickness, StartPosition, EndPosition);
+    if IsPianoBlackKey(Note.Key) then
+      Canvas.FillRectangle(
+        KeyboardRight - Round(Settings.KeyLength * 0.62),
+        StartPosition, KeyboardRight, EndPosition, Color)
+    else
+      Canvas.FillRectangle(KeyboardLeft, StartPosition, KeyboardRight,
+        EndPosition, Color);
+  end;
+end;
+
+procedure THorizontalPianoRollDisplay.DrawStrikeGlow(
+  var Canvas: TPianoRollCanvas; const Data: IPianoRollMusicData;
+  TimeSeconds: Double; StrikePosition, LowestKey, HighestKey: Integer;
+  const Settings: TPianoRollDisplaySettings);
+var
+  Color: TPianoRollColor;
+  Elapsed, Strength: Double;
+  EndPosition, I, PeakAlpha, Radius, StartPosition: Integer;
+  Note: TPianoRollNoteData;
+begin
+  for I := 0 to Data.NoteCount - 1 do
+  begin
+    Note := Data.Notes[I];
+    if not IsNoteActiveAtTime(Note, TimeSeconds) or
+      (Note.Key < LowestKey) or (Note.Key > HighestKey) then
+      Continue;
+    Elapsed := TimeSeconds - Note.StartSeconds;
+    if (Elapsed < 0.0) or (Elapsed >= STRIKE_GLOW_DURATION) then
+      Continue;
+    Strength := 1.0 - Elapsed / STRIKE_GLOW_DURATION;
+    Radius := Max(16, Round(Settings.KeyThickness *
+      (2.4 + (1.0 - Strength) * 0.8)));
+    PeakAlpha := Round(255 * Sqrt(Strength));
+    GetKeyAxisBounds(Canvas.Height, Note.Key, LowestKey, HighestKey,
+      Settings.KeyThickness, StartPosition, EndPosition);
+    Color := ResolvePianoRollTrackColor(Note.TrackIndex,
+      Settings.TrackColorMode, Settings.SingleTrackColor, Settings.Palette);
+    Canvas.BlendRadialGlow(
+      StrikePosition + Max(1, Round(Settings.KeyThickness * 0.12)),
+      (StartPosition + EndPosition) div 2,
+      Radius, Radius, PeakAlpha, Color);
+  end;
+end;
 
 procedure THorizontalPianoRollDisplay.DrawBeatLines(
   var Canvas: TPianoRollCanvas; const Data: IPianoRollMusicData;
@@ -180,15 +273,15 @@ begin
   if not Assigned(Data) or (Canvas.Width <= 0) or (Canvas.Height <= 0) then
     Exit;
 
-  // 現在は基準音域をそのまま実効音域とし、追従方式は後から接続する。
-  ResolvePianoRollPitchRange(Settings.CenterNote, Settings.VisibleNoteCount,
-    LowestKey, HighestKey);
+  TimeSeconds := TimeSeconds - Settings.TimeShift;
+  ResolveEffectivePianoRollPitchRange(Data, TimeSeconds,
+    Settings.DisplayTime, Settings.CenterNote, Settings.VisibleNoteCount,
+    Settings.PitchFollowMode, LowestKey, HighestKey);
   // 共通の80%は発音位置から未来側に確保する時間方向の割合を表す。
   StrikePosition := EnsureRange(
     Round(Canvas.Width * (1.0 - Settings.StrikePosition)),
     0, Canvas.Width - 1);
   DrawLanes(Canvas, StrikePosition, LowestKey, HighestKey, Settings);
-  TimeSeconds := TimeSeconds - Settings.TimeShift;
   PixelsPerSecond := 0.0;
   if Settings.DisplayTime > 0 then
   begin
@@ -198,6 +291,8 @@ begin
       StrikePosition, Settings);
   end;
   DrawKeyboard(Canvas, StrikePosition, LowestKey, HighestKey, Settings);
+  DrawActiveKeys(Canvas, Data, TimeSeconds, StrikePosition,
+    LowestKey, HighestKey, Settings);
   Canvas.FillRectangle(StrikePosition, 0, StrikePosition +
     ScalePianoRollThickness(2, Settings.KeyThickness),
     Canvas.Height, Settings.Palette.StrikeLine);
@@ -239,6 +334,8 @@ begin
         Settings.TrackColorMode, Settings.SingleTrackColor,
         Settings.Palette));
   end;
+  DrawStrikeGlow(Canvas, Data, TimeSeconds, StrikePosition,
+    LowestKey, HighestKey, Settings);
 end;
 
 function CreateHorizontalPianoRollDisplay: IPianoRollDisplay;

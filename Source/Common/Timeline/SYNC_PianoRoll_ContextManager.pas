@@ -1,6 +1,6 @@
 ﻿unit SYNC_PianoRoll_ContextManager;
 
-// 表示タイプに依存せず、Object ID + Effect ID ごとの時刻基準を保持する。
+// 旧共有フレーム経路の互換確認用に、Object ID + Effect ID ごとの時刻基準を保持する。
 
 interface
 

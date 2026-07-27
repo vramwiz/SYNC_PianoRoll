@@ -1,6 +1,6 @@
 ﻿program SYNC_PianoRoll_PluginLoadTests;
 
-// Filter DLLの登録表と音楽ファイル項目のnil終端を検証する。
+// Filter DLLの登録項目、初期値、選択肢配列のnil終端を検証する。
 
 {$APPTYPE CONSOLE}
 
@@ -39,9 +39,9 @@ type
   PSelectListItem = ^TSelectListItem;
   TSelectListArray = array[0..2] of TSelectListItem;
   PSelectListArray = ^TSelectListArray;
-  TSizePresetListArray = array[0..3] of TSelectListItem;
+  TSizePresetListArray = array[0..2] of TSelectListItem;
   PSizePresetListArray = ^TSizePresetListArray;
-  TPitchFollowListArray = array[0..1] of TSelectListItem;
+  TPitchFollowListArray = array[0..3] of TSelectListItem;
   PPitchFollowListArray = ^TPitchFollowListArray;
 
   TSelectItem = record
@@ -100,7 +100,7 @@ begin
       raise Exception.Create('plugin table is nil');
     if string(Table^.Name) <> 'SYNC_ピアノロール_Filter' then
       raise Exception.Create('plugin name mismatch');
-    // 単体映像フィルターであり、既存オブジェクトへ追加するフラグは持たない。
+    // 単体配置とInputベースへの追加で共用する映像生成登録を維持する。
     if Table^.Flag <> 1 then
       raise Exception.Create('plugin is not registered as a standalone filter');
 
@@ -127,7 +127,7 @@ begin
     if string(PItemHeader(Items^[3])^.Name) <> 'ずらし (秒)' then
       raise Exception.Create('time shift item mismatch');
     if (string(PItemHeader(Items^[4])^.Name) <> '表示音階数') or
-      (PTrackItem(Items^[4])^.Value <> 128) then
+      (PTrackItem(Items^[4])^.Value <> 64) then
       raise Exception.Create('visible note count item mismatch');
     if (string(PItemHeader(Items^[5])^.Name) <> '中央ノート') or
       (PTrackItem(Items^[5])^.Value <> 64) then
@@ -137,8 +137,12 @@ begin
       raise Exception.Create('pitch follow item mismatch');
     if string(PItemHeader(Items^[7])^.Name) <> '鍵盤の長さ' then
       raise Exception.Create('key length item mismatch');
+    if PTrackItem(Items^[7])^.Value <> 120 then
+      raise Exception.Create('key length default mismatch');
     if string(PItemHeader(Items^[8])^.Name) <> '鍵盤の太さ' then
       raise Exception.Create('key thickness item mismatch');
+    if PTrackItem(Items^[8])^.Value <> 40 then
+      raise Exception.Create('key thickness default mismatch');
     if string(PItemHeader(Items^[9])^.Name) <> 'ノート太さ (%)' then
       raise Exception.Create('note thickness item mismatch');
     if string(PItemHeader(Items^[10])^.Name) <> 'レーン表示' then
@@ -175,7 +179,7 @@ begin
       raise Exception.Create('display type item mismatch');
     if (string(PItemHeader(Items^[23])^.ItemType) <> 'select') or
       (string(PItemHeader(Items^[23])^.Name) <> 'サイズ初期値') or
-      (PSelectItem(Items^[23])^.Value <> 0) then
+      (PSelectItem(Items^[23])^.Value <> 1) then
       raise Exception.Create('size preset item mismatch');
     if (string(PItemHeader(Items^[24])^.ItemType) <> 'button') or
       (string(PItemHeader(Items^[24])^.Name) <> 'サイズ初期値を適用') or
@@ -200,8 +204,13 @@ begin
     if (PSelectItem(Items^[6])^.List = nil) or
       (string(PPitchFollowListArray(
         PSelectItem(Items^[6])^.List)^[0].Name) <> '追従しない') or
+      (string(PPitchFollowListArray(
+        PSelectItem(Items^[6])^.List)^[1].Name) <> '常に追従') or
+      (string(PPitchFollowListArray(
+        PSelectItem(Items^[6])^.List)^[2].Name) <>
+        'はみ出したとき追従') or
       (PPitchFollowListArray(
-        PSelectItem(Items^[6])^.List)^[1].Name <> nil) then
+        PSelectItem(Items^[6])^.List)^[3].Name <> nil) then
       raise Exception.Create('pitch follow select list mismatch');
     if (PSelectItem(Items^[10])^.List = nil) or
       (PSelectListArray(PSelectItem(Items^[10])^.List)^[2].Name <> nil) then
@@ -223,13 +232,11 @@ begin
       raise Exception.Create('display type list mismatch');
     if (PSelectItem(Items^[23])^.List = nil) or
       (string(PSizePresetListArray(
-        PSelectItem(Items^[23])^.List)^[0].Name) <> '小') or
+        PSelectItem(Items^[23])^.List)^[0].Name) <> '中') or
       (string(PSizePresetListArray(
-        PSelectItem(Items^[23])^.List)^[1].Name) <> '中') or
-      (string(PSizePresetListArray(
-        PSelectItem(Items^[23])^.List)^[2].Name) <> '大') or
+        PSelectItem(Items^[23])^.List)^[1].Name) <> '大') or
       (PSizePresetListArray(
-        PSelectItem(Items^[23])^.List)^[3].Name <> nil) then
+        PSelectItem(Items^[23])^.List)^[2].Name <> nil) then
       raise Exception.Create('size preset list mismatch');
     Writeln('PASS');
   finally

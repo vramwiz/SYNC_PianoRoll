@@ -1,7 +1,6 @@
-unit SharedMemoryBase;
+﻿unit SharedMemoryBase;
 
-// Minimal named shared-memory owner copied from Syncroh2 and limited to the
-// functionality required by SYNC_PianoRoll.
+// Syncroh2から移入し、旧共有フレーム経路に必要な名前付き共有メモリ管理だけを提供する。
 
 interface
 

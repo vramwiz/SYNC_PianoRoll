@@ -1,7 +1,7 @@
 ﻿unit SYNC_PianoRoll_FrameShared;
 
-// Input と Filter のDLL間で現在フレームを受け渡す共通の共有領域。
-// 画像サイズはFilterの処理対象から取得するため、この領域では共有しない。
+// 旧Input／Filter構成の互換確認用に、DLL間で現在フレームを受け渡す。
+// 現行FilterはObject_.Timeを使うため、この共有領域を動作条件にしない。
 
 interface
 

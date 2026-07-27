@@ -249,11 +249,13 @@ begin
     FullName := ExpandFileName(FileName);
     if not ReadFileIdentity(FullName, Age, Size) then
       Exit;
+    // Windows上の同一パスを大文字小文字の違いで重複解析しない。
     Key := LowerCase(FullName);
 
     InitializePianoRollMusicCache;
     if (MusicCacheLock = nil) or (MusicCache = nil) then
       Exit;
+    // 同じファイルの同時解析を避けるため、検索から置換までを一つの排他範囲にする。
     MusicCacheLock.Acquire;
     try
       if not MusicCache.TryGetValue(Key, Entry) or

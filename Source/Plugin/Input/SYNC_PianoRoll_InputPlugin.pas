@@ -1,6 +1,6 @@
 ﻿unit SYNC_PianoRoll_InputPlugin;
 
-// Input登録から呼ばれ、透明映像とピアノロール描画用の時刻ベースを提供する。
+// ファイル名で指定された寸法・時間の透明ベース映像をInputとして提供する。
 
 interface
 
@@ -128,6 +128,7 @@ begin
 
   Context := PPianoRollInputContext(Ih);
   FillChar(Buf^, Context^.Info.biSizeImage, 0);
+  // 旧共有フレーム経路の互換確認用に発行し、現行Filterはこの値へ依存しない。
   PublishPianoRollFrame(Frame, Context^.Rate, Context^.Scale);
   Result := Context^.Info.biSizeImage;
 end;

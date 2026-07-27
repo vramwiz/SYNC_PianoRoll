@@ -119,6 +119,7 @@
         <DCCReference Include="Source\Common\Color\SYNC_PianoRoll_Colors.pas"/>
         <DCCReference Include="Source\Common\Render\SYNC_PianoRoll_RGBA.pas"/>
         <DCCReference Include="Source\Common\Layout\SYNC_PianoRoll_DisplayTypes.pas"/>
+        <DCCReference Include="Source\Common\Layout\SYNC_PianoRoll_PitchFollow.pas"/>
         <DCCReference Include="Source\Display\Vertical\SYNC_PianoRoll_VerticalDisplay.pas"/>
         <DCCReference Include="Source\Display\Horizontal\SYNC_PianoRoll_HorizontalDisplay.pas"/>
         <DCCReference Include="Source\Common\Render\SYNC_PianoRoll_Renderer.pas"/>

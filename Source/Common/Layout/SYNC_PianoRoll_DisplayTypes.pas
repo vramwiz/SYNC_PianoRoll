@@ -16,7 +16,7 @@ type
     pdtHorizontal
   );
 
-  // 基準音域から実効音域を動かす将来の追従方式。
+  // 基準音域から実効音域を動かす追従方式。
   TPianoRollPitchFollowMode = (
     ppfmNone,
     ppfmAlways,
@@ -61,7 +61,7 @@ uses
 function ScalePianoRollThickness(BaseThickness: Integer;
   KeyThickness: Double): Integer;
 begin
-  // 小プリセットの20pxを基準にし、線幅も全体サイズと同率で拡大する。
+  // 旧基準の20pxを1倍とし、中40pxと大60pxで線幅も同率に拡大する。
   Result := Max(1, Round(Max(1, BaseThickness) *
     Max(1.0, KeyThickness) / 20.0));
 end;
@@ -72,11 +72,13 @@ begin
   Settings.DisplayTime := 4.0;
   Settings.StrikePosition := 0.80;
   Settings.TimeShift := 0.0;
-  Settings.VisibleNoteCount := 128;
+  // 初期表示はMIDI全域の半分とし、中央ノートの変更を確認しやすくする。
+  Settings.VisibleNoteCount := 64;
   Settings.CenterNote := 64;
   Settings.PitchFollowMode := ppfmNone;
-  Settings.KeyLength := 60.0;
-  Settings.KeyThickness := 20.0;
+  // 現在の中プリセットを描画設定の初期寸法として使う。
+  Settings.KeyLength := 120.0;
+  Settings.KeyThickness := 40.0;
   Settings.NoteThickness := 0.80;
   Settings.ShowLanes := True;
   Settings.ShowBeatLines := True;

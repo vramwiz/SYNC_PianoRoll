@@ -25,7 +25,6 @@ uses
   SYNC_PianoRoll_VerticalDisplay;
 
 const
-  SIZE_PRESET_SMALL = 0;
   SIZE_PRESET_MEDIUM = 1;
   SIZE_PRESET_LARGE = 2;
 
@@ -45,14 +44,14 @@ var
   MusicFileItem: TFILTER_ITEM_FILE;
   NoteThicknessItem: TFILTER_ITEM_TRACK;
   PitchFollowItem: TFILTER_ITEM_SELECT;
-  PitchFollowList: array[0..1] of TFILTER_ITEM_SELECT_ITEM;
+  PitchFollowList: array[0..3] of TFILTER_ITEM_SELECT_ITEM;
   VerticalPianoRollDisplay: IPianoRollDisplay;
   ShowBeatLinesItem: TFILTER_ITEM_SELECT;
   ShowLanesItem: TFILTER_ITEM_SELECT;
   ShowSelectList: array[0..2] of TFILTER_ITEM_SELECT_ITEM;
   SizePresetButton: TFILTER_ITEM_BUTTON;
   SizePresetItem: TFILTER_ITEM_SELECT;
-  SizePresetList: array[0..3] of TFILTER_ITEM_SELECT_ITEM;
+  SizePresetList: array[0..2] of TFILTER_ITEM_SELECT_ITEM;
   SingleTrackColorItem: TFILTER_ITEM_COLOR;
   StrikeLineColorItem: TFILTER_ITEM_COLOR;
   StrikePositionItem: TFILTER_ITEM_TRACK;
@@ -83,23 +82,17 @@ end;
 
 procedure ApplySizePresetToLocalItems(Preset: Integer);
 begin
-  // 小を現在の基準値とし、中と大は同じ比率で全体寸法を拡大する。
+  // 現在の中を基準寸法とし、大では時間方向と音階方向を1.5倍にする。
   case Preset of
-    SIZE_PRESET_MEDIUM:
-      begin
-        KeyLengthItem.Value := 90;
-        KeyThicknessItem.Value := 30;
-        NoteThicknessItem.Value := 80;
-      end;
     SIZE_PRESET_LARGE:
       begin
-        KeyLengthItem.Value := 120;
-        KeyThicknessItem.Value := 40;
+        KeyLengthItem.Value := 180;
+        KeyThicknessItem.Value := 60;
         NoteThicknessItem.Value := 80;
       end;
   else
-    KeyLengthItem.Value := 60;
-    KeyThicknessItem.Value := 20;
+    KeyLengthItem.Value := 120;
+    KeyThicknessItem.Value := 40;
     NoteThicknessItem.Value := 80;
   end;
 end;
@@ -111,7 +104,7 @@ begin
   if (Edit = nil) or (Obj = nil) or not Assigned(Edit^.SetObjectItemValue) then
     Exit;
 
-  // 登録名を指定し、選択中の単体ピアノロールだけを書き換える。
+  // 登録名を指定し、選択中のピアノロールFilterだけを書き換える。
   Result := Edit^.SetObjectItemValue(Obj, 'SYNC_ピアノロール_Filter',
     Item, PAnsiChar(Value)) <> 0;
 end;
@@ -120,19 +113,14 @@ procedure ApplySizePresetToObject(Edit: PEDIT_SECTION; Obj: OBJECT_HANDLE;
   Preset: Integer);
 begin
   case Preset of
-    SIZE_PRESET_MEDIUM:
-      begin
-        SetSizePresetObjectItem(Edit, Obj, '鍵盤の長さ', UTF8String('90'));
-        SetSizePresetObjectItem(Edit, Obj, '鍵盤の太さ', UTF8String('30'));
-      end;
     SIZE_PRESET_LARGE:
       begin
-        SetSizePresetObjectItem(Edit, Obj, '鍵盤の長さ', UTF8String('120'));
-        SetSizePresetObjectItem(Edit, Obj, '鍵盤の太さ', UTF8String('40'));
+        SetSizePresetObjectItem(Edit, Obj, '鍵盤の長さ', UTF8String('180'));
+        SetSizePresetObjectItem(Edit, Obj, '鍵盤の太さ', UTF8String('60'));
       end;
   else
-    SetSizePresetObjectItem(Edit, Obj, '鍵盤の長さ', UTF8String('60'));
-    SetSizePresetObjectItem(Edit, Obj, '鍵盤の太さ', UTF8String('20'));
+    SetSizePresetObjectItem(Edit, Obj, '鍵盤の長さ', UTF8String('120'));
+    SetSizePresetObjectItem(Edit, Obj, '鍵盤の太さ', UTF8String('40'));
   end;
   SetSizePresetObjectItem(Edit, Obj, 'ノート太さ (%)', UTF8String('80'));
 end;
@@ -165,8 +153,15 @@ begin
   Settings.VisibleNoteCount := EnsureRange(
     Round(VisibleNoteCountItem.Value), 1, 128);
   Settings.CenterNote := EnsureRange(Round(CenterNoteItem.Value), 0, 127);
-  // 現在は固定基準音域だけを実装し、未知の追従値も追従なしへ戻す。
-  Settings.PitchFollowMode := ppfmNone;
+  case PitchFollowItem.Value of
+    Ord(ppfmAlways):
+      Settings.PitchFollowMode := ppfmAlways;
+    Ord(ppfmOnOverflow):
+      Settings.PitchFollowMode := ppfmOnOverflow;
+  else
+    // 未知値は基準音域を変えない既定動作へ戻す。
+    Settings.PitchFollowMode := ppfmNone;
+  end;
   Settings.KeyLength := EnsureRange(KeyLengthItem.Value, 0.0, 1000.0);
   Settings.KeyThickness := EnsureRange(
     KeyThicknessItem.Value, 1.0, 200.0);
@@ -219,7 +214,7 @@ var
   TimeSeconds: Double;
 begin
   try
-    // 単体フィルターへ渡されたローカル時刻で音楽データを同期する。
+    // 単体配置とInput＋Filterの双方で、対象へ渡されたローカル時刻を使う。
     if TryGetPianoRollTimeSeconds(Video, TimeSeconds) then
     begin
       MusicFileName := Trim(string(MusicFileItem.Value));
@@ -239,7 +234,7 @@ end;
 
 var
   Plugin: TFILTER_PLUGIN_TABLE = (
-    // FILTER_FLAG_FILTERを付けず、タイムラインへ単体配置する映像フィルターにする。
+    // 映像生成を登録し、単体配置とInputベースへの追加で同じ描画処理を使う。
     Flag: FILTER_FLAG_VIDEO;
     Name: 'SYNC_ピアノロール_Filter';
     Label_: 'SYNC';
@@ -286,7 +281,8 @@ begin
 
     VisibleNoteCountItem.ItemType := 'track';
     VisibleNoteCountItem.Name := '表示音階数';
-    VisibleNoteCountItem.Value := 128;
+    // MIDI全域の半分を初期表示し、中央ノートで音域を調整できる余地を残す。
+    VisibleNoteCountItem.Value := 64;
     VisibleNoteCountItem.S := 1;
     VisibleNoteCountItem.E := 128;
     VisibleNoteCountItem.Step := 1;
@@ -300,8 +296,12 @@ begin
 
     PitchFollowList[0].Name := '追従しない';
     PitchFollowList[0].Value := Ord(ppfmNone);
-    PitchFollowList[1].Name := nil;
-    PitchFollowList[1].Value := 0;
+    PitchFollowList[1].Name := '常に追従';
+    PitchFollowList[1].Value := Ord(ppfmAlways);
+    PitchFollowList[2].Name := 'はみ出したとき追従';
+    PitchFollowList[2].Value := Ord(ppfmOnOverflow);
+    PitchFollowList[3].Name := nil;
+    PitchFollowList[3].Value := 0;
     PitchFollowItem.ItemType := 'select';
     PitchFollowItem.Name := '音域追従';
     PitchFollowItem.Value := Ord(ppfmNone);
@@ -309,14 +309,14 @@ begin
 
     KeyLengthItem.ItemType := 'track';
     KeyLengthItem.Name := '鍵盤の長さ';
-    KeyLengthItem.Value := 60;
+    KeyLengthItem.Value := 120;
     KeyLengthItem.S := 0;
     KeyLengthItem.E := 1000;
     KeyLengthItem.Step := 1;
 
     KeyThicknessItem.ItemType := 'track';
     KeyThicknessItem.Name := '鍵盤の太さ';
-    KeyThicknessItem.Value := 20;
+    KeyThicknessItem.Value := 40;
     KeyThicknessItem.S := 1;
     KeyThicknessItem.E := 200;
     KeyThicknessItem.Step := 1;
@@ -391,17 +391,15 @@ begin
     DisplayTypeItem.Value := Ord(pdtVertical);
     DisplayTypeItem.List := @DisplayTypeList[0];
 
-    SizePresetList[0].Name := '小';
-    SizePresetList[0].Value := SIZE_PRESET_SMALL;
-    SizePresetList[1].Name := '中';
-    SizePresetList[1].Value := SIZE_PRESET_MEDIUM;
-    SizePresetList[2].Name := '大';
-    SizePresetList[2].Value := SIZE_PRESET_LARGE;
-    SizePresetList[3].Name := nil;
-    SizePresetList[3].Value := 0;
+    SizePresetList[0].Name := '中';
+    SizePresetList[0].Value := SIZE_PRESET_MEDIUM;
+    SizePresetList[1].Name := '大';
+    SizePresetList[1].Value := SIZE_PRESET_LARGE;
+    SizePresetList[2].Name := nil;
+    SizePresetList[2].Value := 0;
     SizePresetItem.ItemType := 'select';
     SizePresetItem.Name := 'サイズ初期値';
-    SizePresetItem.Value := SIZE_PRESET_SMALL;
+    SizePresetItem.Value := SIZE_PRESET_MEDIUM;
     SizePresetItem.List := @SizePresetList[0];
     SizePresetButton.ItemType := 'button';
     SizePresetButton.Name := 'サイズ初期値を適用';
