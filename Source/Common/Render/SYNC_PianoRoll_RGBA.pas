@@ -19,6 +19,8 @@ type
     procedure Clear;
     procedure BlendRadialGlow(CenterX, CenterY, RadiusX, RadiusY,
       PeakAlpha: Integer; const Color: TPianoRollColor);
+    procedure BlendRectangle(LeftPosition, TopPosition, RightPosition,
+      BottomPosition: Integer; const Color: TPianoRollColor);
     procedure FillRectangle(LeftPosition, TopPosition, RightPosition,
       BottomPosition: Integer; const Color: TPianoRollColor);
     property Width: Integer read FWidth;
@@ -97,6 +99,25 @@ begin
       GlowColor.A := Round(PeakAlpha * Falloff);
       BlendPixel(PPixelArray(FBuffer)^[Y * FWidth + X], GlowColor);
     end;
+end;
+
+procedure TPianoRollCanvas.BlendRectangle(LeftPosition, TopPosition,
+  RightPosition, BottomPosition: Integer; const Color: TPianoRollColor);
+var
+  X, Y: Integer;
+begin
+  if (FBuffer = nil) or (FWidth <= 0) or (FHeight <= 0) or
+    (Color.A = 0) then
+    Exit;
+  LeftPosition := EnsureRange(LeftPosition, 0, FWidth);
+  RightPosition := EnsureRange(RightPosition, 0, FWidth);
+  TopPosition := EnsureRange(TopPosition, 0, FHeight);
+  BottomPosition := EnsureRange(BottomPosition, 0, FHeight);
+  if (LeftPosition >= RightPosition) or (TopPosition >= BottomPosition) then
+    Exit;
+  for Y := TopPosition to BottomPosition - 1 do
+    for X := LeftPosition to RightPosition - 1 do
+      BlendPixel(PPixelArray(FBuffer)^[Y * FWidth + X], Color);
 end;
 
 procedure TPianoRollCanvas.Initialize(Buffer: PPIXEL_RGBA;

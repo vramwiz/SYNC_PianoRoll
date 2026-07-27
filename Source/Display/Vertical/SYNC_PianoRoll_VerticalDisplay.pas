@@ -32,6 +32,10 @@ type
     procedure DrawKeyboard(var Canvas: TPianoRollCanvas;
       StrikePosition, LowestKey, HighestKey: Integer;
       const Settings: TPianoRollDisplaySettings);
+    procedure DrawKeyboardKey(var Canvas: TPianoRollCanvas;
+      LeftPosition, TopPosition, RightPosition, BottomPosition: Integer;
+      const Color: TPianoRollColor; Active: Boolean;
+      const Settings: TPianoRollDisplaySettings);
     procedure DrawLanes(var Canvas: TPianoRollCanvas;
       StrikePosition, LowestKey, HighestKey: Integer;
       const Settings: TPianoRollDisplaySettings);
@@ -43,6 +47,10 @@ type
       const Data: IPianoRollMusicData; TimeSeconds: Double;
       StrikePosition, LowestKey, HighestKey: Integer;
       const Settings: TPianoRollDisplaySettings);
+    procedure DrawNote(var Canvas: TPianoRollCanvas;
+      LeftPosition, TopPosition, RightPosition, BottomPosition: Integer;
+      const Color: TPianoRollColor;
+      const Settings: TPianoRollDisplaySettings);
     procedure GetKeyAxisBounds(CanvasWidth, MidiKey, LowestKey,
       HighestKey: Integer; KeyThickness: Double;
       out StartPosition, EndPosition: Integer);
@@ -51,6 +59,92 @@ type
       const Data: IPianoRollMusicData; TimeSeconds: Double;
       const Settings: TPianoRollDisplaySettings);
   end;
+
+procedure TVerticalPianoRollDisplay.DrawKeyboardKey(
+  var Canvas: TPianoRollCanvas; LeftPosition, TopPosition,
+  RightPosition, BottomPosition: Integer; const Color: TPianoRollColor;
+  Active: Boolean; const Settings: TPianoRollDisplaySettings);
+var
+  Bevel, GlossRight, GlossAlpha: Integer;
+begin
+  if (RightPosition - LeftPosition < 4) or
+    (BottomPosition - TopPosition < 4) then
+  begin
+    Canvas.FillRectangle(LeftPosition, TopPosition, RightPosition,
+      BottomPosition, Color);
+    Exit;
+  end;
+
+  Bevel := Min(ScalePianoRollThickness(1, Settings.KeyThickness),
+    Min((RightPosition - LeftPosition) div 3,
+      (BottomPosition - TopPosition) div 3));
+  Bevel := Max(1, Bevel);
+  Canvas.FillRectangle(LeftPosition, TopPosition, RightPosition,
+    BottomPosition, DarkenPianoRollColor(Color, 0.35));
+  Canvas.FillRectangle(LeftPosition + Bevel, TopPosition + Bevel,
+    RightPosition - Bevel, BottomPosition - Bevel, Color);
+  Canvas.FillRectangle(LeftPosition, TopPosition, RightPosition - Bevel,
+    TopPosition + Bevel, LightenPianoRollColor(Color, 0.28));
+  Canvas.FillRectangle(LeftPosition, TopPosition + Bevel,
+    LeftPosition + Bevel, BottomPosition - Bevel,
+    LightenPianoRollColor(Color, 0.18));
+  Canvas.FillRectangle(LeftPosition + Bevel, BottomPosition - Bevel,
+    RightPosition, BottomPosition, DarkenPianoRollColor(Color, 0.22));
+  Canvas.FillRectangle(RightPosition - Bevel, TopPosition + Bevel,
+    RightPosition, BottomPosition, DarkenPianoRollColor(Color, 0.30));
+
+  GlossRight := LeftPosition + Bevel +
+    Max(1, (RightPosition - LeftPosition - Bevel * 2) div 4);
+  if Active then
+    GlossAlpha := 70
+  else
+    GlossAlpha := 30;
+  Canvas.BlendRectangle(LeftPosition + Bevel, TopPosition + Bevel,
+    GlossRight, BottomPosition - Bevel,
+    PianoRollColor(255, 255, 255, GlossAlpha));
+end;
+
+procedure TVerticalPianoRollDisplay.DrawNote(var Canvas: TPianoRollCanvas;
+  LeftPosition, TopPosition, RightPosition, BottomPosition: Integer;
+  const Color: TPianoRollColor;
+  const Settings: TPianoRollDisplaySettings);
+var
+  Bevel, GlossRight: Integer;
+begin
+  if (not Settings.NoteDepthEnabled) or
+    (RightPosition - LeftPosition < 4) or
+    (BottomPosition - TopPosition < 4) then
+  begin
+    Canvas.FillRectangle(LeftPosition, TopPosition, RightPosition,
+      BottomPosition, Color);
+    Exit;
+  end;
+
+  Bevel := Min(ScalePianoRollThickness(1, Settings.KeyThickness),
+    Min((RightPosition - LeftPosition) div 3,
+      (BottomPosition - TopPosition) div 3));
+  Bevel := Max(1, Bevel);
+  Canvas.FillRectangle(LeftPosition, TopPosition, RightPosition,
+    BottomPosition, DarkenPianoRollColor(Color, 0.45));
+  Canvas.FillRectangle(LeftPosition + Bevel, TopPosition + Bevel,
+    RightPosition - Bevel, BottomPosition - Bevel, Color);
+  Canvas.FillRectangle(LeftPosition, TopPosition, RightPosition - Bevel,
+    TopPosition + Bevel, LightenPianoRollColor(Color, 0.35));
+  Canvas.FillRectangle(LeftPosition, TopPosition + Bevel,
+    LeftPosition + Bevel, BottomPosition - Bevel,
+    LightenPianoRollColor(Color, 0.18));
+  Canvas.FillRectangle(LeftPosition + Bevel, BottomPosition - Bevel,
+    RightPosition, BottomPosition, DarkenPianoRollColor(Color, 0.30));
+  Canvas.FillRectangle(RightPosition - Bevel, TopPosition + Bevel,
+    RightPosition, BottomPosition, DarkenPianoRollColor(Color, 0.30));
+
+  // 縦表示は左側へ細い反射を置き、落下方向に沿ったつやを作る。
+  GlossRight := LeftPosition + Bevel +
+    Max(1, (RightPosition - LeftPosition - Bevel * 2) div 3);
+  Canvas.BlendRectangle(LeftPosition + Bevel, TopPosition + Bevel,
+    GlossRight, BottomPosition - Bevel,
+    PianoRollColor(255, 255, 255, 60));
+end;
 
 function IsNoteActiveAtTime(const Note: TPianoRollNoteData;
   TimeSeconds: Double): Boolean;
@@ -90,11 +184,11 @@ begin
     GetKeyAxisBounds(Canvas.Width, Note.Key, LowestKey, HighestKey,
       Settings.KeyThickness, StartPosition, EndPosition);
     if IsPianoBlackKey(Note.Key) then
-      Canvas.FillRectangle(StartPosition, KeyboardTop, EndPosition,
-        KeyboardTop + Round(Settings.KeyLength * 0.62), Color)
+      DrawKeyboardKey(Canvas, StartPosition, KeyboardTop, EndPosition,
+        KeyboardTop + Round(Settings.KeyLength * 0.62), Color, True, Settings)
     else
-      Canvas.FillRectangle(StartPosition, KeyboardTop, EndPosition,
-        KeyboardBottom, Color);
+      DrawKeyboardKey(Canvas, StartPosition, KeyboardTop, EndPosition,
+        KeyboardBottom, Color, True, Settings);
   end;
 end;
 
@@ -229,17 +323,14 @@ begin
   KeyboardTop := StrikePosition + 2;
   KeyboardBottom := KeyboardTop + Round(Settings.KeyLength);
 
-  // 白鍵を先に並べ、境界線を付ける。
+  // 白鍵を先に並べ、浅い面取りと縦方向の反射を付ける。
   for Key := LowestKey to HighestKey do
     if not IsPianoBlackKey(Key) then
     begin
       GetKeyAxisBounds(Canvas.Width, Key, LowestKey, HighestKey,
         Settings.KeyThickness, StartPosition, EndPosition);
-      Canvas.FillRectangle(StartPosition, KeyboardTop, EndPosition,
-        KeyboardBottom, Settings.Palette.WhiteKey);
-      Canvas.FillRectangle(StartPosition, KeyboardTop, StartPosition +
-        ScalePianoRollThickness(1, Settings.KeyThickness),
-        KeyboardBottom, Settings.Palette.KeyBorder);
+      DrawKeyboardKey(Canvas, StartPosition, KeyboardTop, EndPosition,
+        KeyboardBottom, Settings.Palette.WhiteKey, False, Settings);
     end;
 
   // 黒鍵は白鍵の上へ重ねる。
@@ -248,9 +339,9 @@ begin
     begin
       GetKeyAxisBounds(Canvas.Width, Key, LowestKey, HighestKey,
         Settings.KeyThickness, StartPosition, EndPosition);
-      Canvas.FillRectangle(StartPosition, KeyboardTop, EndPosition,
+      DrawKeyboardKey(Canvas, StartPosition, KeyboardTop, EndPosition,
         KeyboardTop + Round(Settings.KeyLength * 0.62),
-        Settings.Palette.BlackKey);
+        Settings.Palette.BlackKey, False, Settings);
     end;
 end;
 
@@ -319,9 +410,10 @@ begin
       Round((LaneRight - LaneLeft) * (1.0 - Thickness) / 2.0);
     NoteRight := LaneRight -
       Round((LaneRight - LaneLeft) * (1.0 - Thickness) / 2.0);
-    Canvas.FillRectangle(NoteLeft, TopPosition, Max(NoteLeft + 1, NoteRight),
+    DrawNote(Canvas, NoteLeft, TopPosition, Max(NoteLeft + 1, NoteRight),
       BottomPosition, ResolvePianoRollTrackColor(Note.TrackIndex,
-        Settings.TrackColorMode, Settings.SingleTrackColor, Settings.Palette));
+        Settings.TrackColorMode, Settings.SingleTrackColor, Settings.Palette),
+      Settings);
   end;
   DrawStrikeGlow(Canvas, Data, TimeSeconds, StrikePosition,
     LowestKey, HighestKey, Settings);

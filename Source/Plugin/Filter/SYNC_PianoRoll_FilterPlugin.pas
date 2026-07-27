@@ -42,6 +42,8 @@ var
   KeyThicknessItem: TFILTER_ITEM_TRACK;
   MeasureLineColorItem: TFILTER_ITEM_COLOR;
   MusicFileItem: TFILTER_ITEM_FILE;
+  NoteDepthItem: TFILTER_ITEM_SELECT;
+  NoteDepthList: array[0..2] of TFILTER_ITEM_SELECT_ITEM;
   NoteThicknessItem: TFILTER_ITEM_TRACK;
   PitchFollowItem: TFILTER_ITEM_SELECT;
   PitchFollowList: array[0..3] of TFILTER_ITEM_SELECT_ITEM;
@@ -61,7 +63,7 @@ var
   VisibleNoteCountItem: TFILTER_ITEM_TRACK;
   WhiteKeyColorItem: TFILTER_ITEM_COLOR;
   WhiteLaneColorItem: TFILTER_ITEM_COLOR;
-  PluginItems: array[0..25] of Pointer;
+  PluginItems: array[0..26] of Pointer;
 
 function GetFilterColor(const Item: TFILTER_ITEM_COLOR;
   Alpha: Byte): TPianoRollColor;
@@ -167,6 +169,7 @@ begin
     KeyThicknessItem.Value, 1.0, 200.0);
   Settings.NoteThickness := EnsureRange(
     NoteThicknessItem.Value / 100.0, 0.05, 1.0);
+  Settings.NoteDepthEnabled := NoteDepthItem.Value <> 0;
   Settings.ShowLanes := ShowLanesItem.Value <> 0;
   Settings.ShowBeatLines := ShowBeatLinesItem.Value <> 0;
   Settings.BeatsPerMeasure := EnsureRange(
@@ -328,6 +331,17 @@ begin
     NoteThicknessItem.E := 100;
     NoteThicknessItem.Step := 1;
 
+    NoteDepthList[0].Name := '平面';
+    NoteDepthList[0].Value := 0;
+    NoteDepthList[1].Name := '立体';
+    NoteDepthList[1].Value := 1;
+    NoteDepthList[2].Name := nil;
+    NoteDepthList[2].Value := 0;
+    NoteDepthItem.ItemType := 'select';
+    NoteDepthItem.Name := 'ノート立体表示';
+    NoteDepthItem.Value := 1;
+    NoteDepthItem.List := @NoteDepthList[0];
+
     ShowSelectList[0].Name := '非表示';
     ShowSelectList[0].Value := 0;
     ShowSelectList[1].Name := '表示';
@@ -432,7 +446,8 @@ begin
     PluginItems[22] := @DisplayTypeItem;
     PluginItems[23] := @SizePresetItem;
     PluginItems[24] := @SizePresetButton;
-    PluginItems[25] := nil;
+    PluginItems[25] := @NoteDepthItem;
+    PluginItems[26] := nil;
     Plugin.Items := @PluginItems[0];
   end;
   Result := @Plugin;

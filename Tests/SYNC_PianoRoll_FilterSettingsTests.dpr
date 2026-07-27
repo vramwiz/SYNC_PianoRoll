@@ -15,7 +15,7 @@ type
   TGetFilterPluginTable = function: PFILTER_PLUGIN_TABLE; cdecl;
   TInitializePlugin = function(Version: DWORD): Byte; cdecl;
   TUninitializePlugin = procedure; cdecl;
-  TItemArray = array[0..25] of Pointer;
+  TItemArray = array[0..26] of Pointer;
   PItemArray = ^TItemArray;
 
 var

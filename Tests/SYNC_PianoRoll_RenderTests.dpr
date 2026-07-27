@@ -1,6 +1,6 @@
 ﻿program SYNC_PianoRoll_RenderTests;
 
-// 縦表示のRGBA描画、配色、寸法変更、線幅連動を検証する。
+// 縦表示のRGBA描画、配色、立体表示、寸法変更、線幅連動を検証する。
 
 {$APPTYPE CONSOLE}
 
@@ -36,9 +36,13 @@ var
   CapturedCustomWhiteKeyPixels: Integer;
   CapturedDefaultSinglePixels: Integer;
   CapturedActiveKeyPixels: Integer;
+  CapturedActiveKeyDepthPixels: Integer;
   CapturedGlowPixels: Integer;
   CapturedHeight: Integer;
   CapturedMeasureLinePixels: Integer;
+  CapturedNoteBorderPixels: Integer;
+  CapturedNoteHighlightPixels: Integer;
+  CapturedKeyboardDepthPixels: Integer;
   CapturedOpaquePixels: Integer;
   CapturedSingleTrackPixels: Integer;
   CapturedStrikeLinePixels: Integer;
@@ -69,8 +73,12 @@ begin
   CapturedCustomWhiteKeyPixels := 0;
   CapturedDefaultSinglePixels := 0;
   CapturedActiveKeyPixels := 0;
+  CapturedActiveKeyDepthPixels := 0;
   CapturedGlowPixels := 0;
   CapturedMeasureLinePixels := 0;
+  CapturedNoteBorderPixels := 0;
+  CapturedNoteHighlightPixels := 0;
+  CapturedKeyboardDepthPixels := 0;
   CapturedSingleTrackPixels := 0;
   CapturedStrikeLinePixels := 0;
   CapturedVariation1Pixels := 0;
@@ -146,6 +154,34 @@ begin
       (PPixelArray(Buffer)^[I].B = 180) and
       (PPixelArray(Buffer)^[I].A = 255) then
       Inc(CapturedVariation1Pixels);
+    if (PPixelArray(Buffer)^[I].R = 44) and
+      (PPixelArray(Buffer)^[I].G = 116) and
+      (PPixelArray(Buffer)^[I].B = 140) and
+      (PPixelArray(Buffer)^[I].A = 255) then
+      Inc(CapturedNoteBorderPixels);
+    if (PPixelArray(Buffer)^[I].R = 141) and
+      (PPixelArray(Buffer)^[I].G = 226) and
+      (PPixelArray(Buffer)^[I].B = 255) and
+      (PPixelArray(Buffer)^[I].A = 255) then
+      Inc(CapturedNoteHighlightPixels);
+    if (((PPixelArray(Buffer)^[I].R = 246) and
+      (PPixelArray(Buffer)^[I].G = 246) and
+      (PPixelArray(Buffer)^[I].B = 246)) or
+      ((PPixelArray(Buffer)^[I].R = 66) and
+      (PPixelArray(Buffer)^[I].G = 66) and
+      (PPixelArray(Buffer)^[I].B = 66))) and
+      (PPixelArray(Buffer)^[I].A = 255) and
+      ((I div Width) > Round(Height * 0.80) + 2) then
+      Inc(CapturedKeyboardDepthPixels);
+    if (PPixelArray(Buffer)^[I].R >= 45) and
+      (PPixelArray(Buffer)^[I].R <= 70) and
+      (PPixelArray(Buffer)^[I].G >= 130) and
+      (PPixelArray(Buffer)^[I].G <= 165) and
+      (PPixelArray(Buffer)^[I].B >= 160) and
+      (PPixelArray(Buffer)^[I].B <= 195) and
+      (PPixelArray(Buffer)^[I].A = 255) and
+      ((I div Width) > Round(Height * 0.80) + 2) then
+      Inc(CapturedActiveKeyDepthPixels);
   end;
 end;
 
@@ -252,14 +288,30 @@ begin
       'active vertical key was not highlighted');
     Check(CapturedGlowPixels > 0,
       'vertical strike glow was not drawn');
+    Check(RenderPianoRoll(@Video, Data, -0.25, Display, Settings),
+      'depth vertical render failed');
+    Check((CapturedNoteBorderPixels > 0) and
+      (CapturedNoteHighlightPixels > 0),
+      'vertical note depth was not drawn');
+    Settings.NoteDepthEnabled := False;
+    Check(RenderPianoRoll(@Video, Data, -0.25, Display, Settings),
+      'flat vertical render failed');
+    Check((CapturedNoteBorderPixels = 0) and
+      (CapturedNoteHighlightPixels = 0),
+      'flat vertical note retained depth shading');
+    Settings.NoteDepthEnabled := True;
     Check(RenderPianoRoll(@Video, Data, 0.40, Display, Settings),
       'sustained vertical render failed');
     Check((CapturedActiveKeyPixels > 0) and (CapturedGlowPixels = 0),
       'vertical glow did not decay independently of the active key');
+    Check(CapturedActiveKeyDepthPixels > 0,
+      'active vertical key depth was not drawn');
     Check(RenderPianoRoll(@Video, Data, 0.75, Display, Settings),
       'inactive vertical render failed');
     Check((CapturedActiveKeyPixels = 0) and (CapturedGlowPixels = 0),
       'vertical strike highlight remained after note end');
+    Check(CapturedKeyboardDepthPixels > 0,
+      'vertical keyboard depth was not drawn');
     DefaultStrikeLinePixels := CapturedStrikeLinePixels;
 
     // 大サイズでは中の初期寸法と同率で発音線も太くする。

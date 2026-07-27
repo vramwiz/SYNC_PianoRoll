@@ -1,6 +1,6 @@
 ﻿program SYNC_PianoRoll_HorizontalRenderTests;
 
-// 横表示の時間方向、音階方向、鍵盤、レーン、拍線、ノート描画を検証する。
+// 横表示の時間方向、音階方向、鍵盤、レーン、拍線、ノート立体描画を検証する。
 
 {$APPTYPE CONSOLE}
 
@@ -32,12 +32,16 @@ type
 var
   CapturedBeatLine: Boolean;
   CapturedActiveKey: Boolean;
+  CapturedActiveKeyDepth: Boolean;
   CapturedBlackKey: Boolean;
   CapturedBlackLane: Boolean;
   CapturedGlow: Boolean;
   CapturedHeight: Integer;
   CapturedKeyboardLeftOfStrike: Boolean;
+  CapturedKeyboardDepth: Boolean;
   CapturedMeasureLine: Boolean;
+  CapturedNoteBorder: Boolean;
+  CapturedNoteHighlight: Boolean;
   CapturedNoteRightOfStrike: Boolean;
   CapturedStrikeLine: Boolean;
   CapturedWhiteLane: Boolean;
@@ -73,11 +77,15 @@ begin
   CapturedWidth := Width;
   CapturedHeight := Height;
   CapturedActiveKey := False;
+  CapturedActiveKeyDepth := False;
   CapturedGlow := False;
+  CapturedKeyboardDepth := False;
+  CapturedNoteBorder := False;
+  CapturedNoteHighlight := False;
   // 320x240、発音位置75%では発音線がX=80、未来側が右になる。
   CapturedStrikeLine := Matches(80, 10, 255, 255, 255, 160);
   CapturedKeyboardLeftOfStrike := Matches(30, 190, 242, 242, 242, 255);
-  CapturedBlackKey := Matches(50, 176, 24, 24, 24, 255);
+  CapturedBlackKey := False;
   CapturedNoteRightOfStrike := Matches(120, 190, 80, 210, 255, 255);
   CapturedWhiteLane := Matches(250, 190, 238, 238, 242, 28);
   CapturedBlackLane := Matches(250, 176, 110, 110, 120, 24);
@@ -90,9 +98,27 @@ begin
     if (X < 78) and (Pixel.R = 80) and (Pixel.G = 210) and
       (Pixel.B = 255) and (Pixel.A = 255) then
       CapturedActiveKey := True;
+    if (X < 78) and (Pixel.R = 24) and (Pixel.G = 24) and
+      (Pixel.B = 24) and (Pixel.A = 255) then
+      CapturedBlackKey := True;
+    if (X < 78) and
+      (((Pixel.R = 246) and (Pixel.G = 246) and (Pixel.B = 246)) or
+      ((Pixel.R = 66) and (Pixel.G = 66) and (Pixel.B = 66))) and
+      (Pixel.A = 255) then
+      CapturedKeyboardDepth := True;
+    if (X < 78) and (Pixel.R >= 45) and (Pixel.R <= 70) and
+      (Pixel.G >= 130) and (Pixel.G <= 165) and
+      (Pixel.B >= 160) and (Pixel.B <= 195) and (Pixel.A = 255) then
+      CapturedActiveKeyDepth := True;
     if (Pixel.R > 220) and (Pixel.G > 220) and (Pixel.B > 220) and
       (Pixel.A > 200) and (X >= 80) and (X <= 92) then
       CapturedGlow := True;
+    if (Pixel.R = 44) and (Pixel.G = 116) and (Pixel.B = 140) and
+      (Pixel.A = 255) then
+      CapturedNoteBorder := True;
+    if (Pixel.R = 141) and (Pixel.G = 226) and (Pixel.B = 255) and
+      (Pixel.A = 255) then
+      CapturedNoteHighlight := True;
   end;
 end;
 
@@ -194,14 +220,24 @@ begin
     Check(CapturedKeyboardLeftOfStrike,
       'horizontal keyboard was not drawn left of strike');
     Check(CapturedBlackKey, 'horizontal black key was not drawn');
+    Check(CapturedKeyboardDepth,
+      'horizontal keyboard depth was not drawn');
     Check(CapturedNoteRightOfStrike,
       'horizontal future note was not drawn right of strike');
     Check(CapturedWhiteLane, 'horizontal white lane was not drawn');
     Check(CapturedBlackLane, 'horizontal black lane was not drawn');
     Check(CapturedMeasureLine, 'horizontal measure line was not drawn');
     Check(CapturedBeatLine, 'horizontal beat line was not drawn');
+    Check(CapturedNoteBorder and CapturedNoteHighlight,
+      'horizontal note depth was not drawn');
     Check(not CapturedActiveKey and not CapturedGlow,
       'future horizontal note was highlighted before sounding');
+    Settings.NoteDepthEnabled := False;
+    Check(RenderPianoRoll(@Video, Data, 0.0, Display, Settings),
+      'flat horizontal render failed');
+    Check(not CapturedNoteBorder and not CapturedNoteHighlight,
+      'flat horizontal note retained depth shading');
+    Settings.NoteDepthEnabled := True;
     Check(RenderPianoRoll(@Video, Data, 0.5, Display, Settings),
       'active horizontal render failed');
     Check(CapturedActiveKey, 'active horizontal key was not highlighted');
@@ -210,6 +246,8 @@ begin
       'sustained horizontal render failed');
     Check(CapturedActiveKey and not CapturedGlow,
       'horizontal glow did not decay independently of the active key');
+    Check(CapturedActiveKeyDepth,
+      'active horizontal key depth was not drawn');
     Check(RenderPianoRoll(@Video, Data, 1.0, Display, Settings),
       'inactive horizontal render failed');
     Check(not CapturedActiveKey and not CapturedGlow,

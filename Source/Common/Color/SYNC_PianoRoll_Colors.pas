@@ -28,6 +28,10 @@ type
   end;
 
 function PianoRollColor(R, G, B, A: Byte): TPianoRollColor;
+function DarkenPianoRollColor(const Color: TPianoRollColor;
+  Amount: Double): TPianoRollColor;
+function LightenPianoRollColor(const Color: TPianoRollColor;
+  Amount: Double): TPianoRollColor;
 function ResolvePianoRollTrackColor(TrackIndex: Integer;
   ColorMode: TPianoRollTrackColorMode; const SingleColor: TPianoRollColor;
   const Palette: TPianoRollPalette): TPianoRollColor;
@@ -35,12 +39,37 @@ procedure SetDefaultPianoRollPalette(out Palette: TPianoRollPalette);
 
 implementation
 
+uses
+  System.Math;
+
 function PianoRollColor(R, G, B, A: Byte): TPianoRollColor;
 begin
   Result.R := R;
   Result.G := G;
   Result.B := B;
   Result.A := A;
+end;
+
+function DarkenPianoRollColor(const Color: TPianoRollColor;
+  Amount: Double): TPianoRollColor;
+begin
+  Amount := EnsureRange(Amount, 0.0, 1.0);
+  Result := PianoRollColor(
+    Round(Color.R * (1.0 - Amount)),
+    Round(Color.G * (1.0 - Amount)),
+    Round(Color.B * (1.0 - Amount)),
+    Color.A);
+end;
+
+function LightenPianoRollColor(const Color: TPianoRollColor;
+  Amount: Double): TPianoRollColor;
+begin
+  Amount := EnsureRange(Amount, 0.0, 1.0);
+  Result := PianoRollColor(
+    Round(Color.R + (255 - Color.R) * Amount),
+    Round(Color.G + (255 - Color.G) * Amount),
+    Round(Color.B + (255 - Color.B) * Amount),
+    Color.A);
 end;
 
 function ResolvePianoRollTrackColor(TrackIndex: Integer;

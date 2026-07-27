@@ -73,7 +73,7 @@ type
   end;
   PPluginTable = ^TPluginTable;
 
-  TItemArray = array[0..25] of Pointer;
+  TItemArray = array[0..26] of Pointer;
   PItemArray = ^TItemArray;
 
 var
@@ -107,10 +107,10 @@ begin
     Items := PItemArray(Table^.Items);
     if Items = nil then
       raise Exception.Create('plugin items are nil');
-    for I := 0 to 24 do
+    for I := 0 to 25 do
       if Items^[I] = nil then
         raise Exception.CreateFmt('plugin item %d is nil', [I]);
-    if Items^[25] <> nil then
+    if Items^[26] <> nil then
       raise Exception.Create('plugin items are not terminated');
     FileItem := PFileItem(Items^[0]);
     if string(FileItem^.ItemType) <> 'file' then
@@ -185,6 +185,10 @@ begin
       (string(PItemHeader(Items^[24])^.Name) <> 'サイズ初期値を適用') or
       (PButtonItem(Items^[24])^.Callback = nil) then
       raise Exception.Create('size preset button mismatch');
+    if (string(PItemHeader(Items^[25])^.ItemType) <> 'select') or
+      (string(PItemHeader(Items^[25])^.Name) <> 'ノート立体表示') or
+      (PSelectItem(Items^[25])^.Value <> 1) then
+      raise Exception.Create('note depth item mismatch');
     if (PColorItem(Items^[13])^.R <> 242) or
       (PColorItem(Items^[13])^.G <> 242) or
       (PColorItem(Items^[13])^.B <> 242) or
@@ -238,6 +242,14 @@ begin
       (PSizePresetListArray(
         PSelectItem(Items^[23])^.List)^[2].Name <> nil) then
       raise Exception.Create('size preset list mismatch');
+    if (PSelectItem(Items^[25])^.List = nil) or
+      (string(PSelectListArray(
+        PSelectItem(Items^[25])^.List)^[0].Name) <> '平面') or
+      (string(PSelectListArray(
+        PSelectItem(Items^[25])^.List)^[1].Name) <> '立体') or
+      (PSelectListArray(
+        PSelectItem(Items^[25])^.List)^[2].Name <> nil) then
+      raise Exception.Create('note depth select list mismatch');
     Writeln('PASS');
   finally
     FreeLibrary(ModuleHandle);

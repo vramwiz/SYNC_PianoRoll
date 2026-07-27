@@ -33,6 +33,7 @@ type
     KeyLength: Double;        // 鍵盤が伸びる方向の長さ。
     KeyThickness: Double;     // 1鍵の音階方向の太さ。
     NoteThickness: Double;    // 音階方向レーンに対するノートの占有率。
+    NoteDepthEnabled: Boolean; // 縁、面取り、つやによる疑似立体表示。
     ShowLanes: Boolean;       // 白鍵・黒鍵に対応するレーン背景を表示する。
     ShowBeatLines: Boolean;   // 拍線と小節線を表示する。
     BeatsPerMeasure: Integer; // 1小節として強調する拍数。
@@ -80,6 +81,7 @@ begin
   Settings.KeyLength := 120.0;
   Settings.KeyThickness := 40.0;
   Settings.NoteThickness := 0.80;
+  Settings.NoteDepthEnabled := True;
   Settings.ShowLanes := True;
   Settings.ShowBeatLines := True;
   Settings.BeatsPerMeasure := 4;
