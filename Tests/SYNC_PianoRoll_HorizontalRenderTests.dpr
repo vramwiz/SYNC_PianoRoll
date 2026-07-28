@@ -34,6 +34,8 @@ var
   CapturedActiveKey: Boolean;
   CapturedActiveKeyDepth: Boolean;
   CapturedBlackKey: Boolean;
+  CapturedBlackKeyAtLeft: Boolean;
+  CapturedBlackKeyAtRight: Boolean;
   CapturedBlackKeyPixels: Integer;
   CapturedBlackLane: Boolean;
   CapturedGlow: Boolean;
@@ -88,6 +90,9 @@ begin
   CapturedStrikeLine := Matches(80, 10, 255, 255, 255, 160);
   CapturedKeyboardLeftOfStrike := Matches(30, 190, 242, 242, 242, 255);
   CapturedBlackKey := False;
+  // 左へ90度回した鍵盤では、短い黒鍵は鍵盤の左側に寄る。
+  CapturedBlackKeyAtLeft := Matches(25, 180, 24, 24, 24, 255);
+  CapturedBlackKeyAtRight := Matches(70, 180, 24, 24, 24, 255);
   CapturedNoteRightOfStrike := Matches(120, 190, 80, 210, 255, 255);
   CapturedWhiteLane := Matches(250, 190, 238, 238, 242, 28);
   CapturedBlackLane := Matches(250, 176, 110, 110, 120, 24);
@@ -230,6 +235,8 @@ begin
     Check(CapturedKeyboardLeftOfStrike,
       'horizontal keyboard was not drawn left of strike');
     Check(CapturedBlackKey, 'horizontal black key was not drawn');
+    Check(CapturedBlackKeyAtLeft and not CapturedBlackKeyAtRight,
+      'horizontal keyboard was not rotated left');
     Check(CapturedKeyboardDepth,
       'horizontal keyboard depth was not drawn');
     Check(CapturedNoteRightOfStrike,

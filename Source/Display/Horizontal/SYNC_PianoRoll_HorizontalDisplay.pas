@@ -201,8 +201,8 @@ begin
       GetKeyAxisBounds(Canvas.Height, Key, LowestKey, HighestKey,
         Settings.KeyThickness, StartPosition, EndPosition);
       DrawKeyboardKey(Canvas,
-        KeyboardRight - Round(Settings.KeyLength * 0.62),
-        StartPosition, KeyboardRight, EndPosition,
+        KeyboardLeft, StartPosition,
+        KeyboardLeft + Round(Settings.KeyLength * 0.62), EndPosition,
         Settings.Palette.BlackKey, False, Settings);
     end;
 
@@ -221,8 +221,9 @@ begin
     GetKeyAxisBounds(Canvas.Height, Note.Key, LowestKey, HighestKey,
       Settings.KeyThickness, StartPosition, EndPosition);
     DrawKeyboardKey(Canvas,
-      KeyboardRight - Round(Settings.KeyLength * 0.62),
-      StartPosition, KeyboardRight, EndPosition, Color, True, Settings);
+      KeyboardLeft, StartPosition,
+      KeyboardLeft + Round(Settings.KeyLength * 0.62), EndPosition,
+      Color, True, Settings);
   end;
 end;
 
@@ -373,15 +374,15 @@ begin
         EndPosition, Settings.Palette.WhiteKey, False, Settings);
     end;
 
-  // 黒鍵は発音位置側へ寄せ、白鍵の上へ重ねる。
+  // 水平のピアノを左へ90度回した向きに合わせ、黒鍵は左側へ寄せる。
   for Key := LowestKey to HighestKey do
     if IsPianoBlackKey(Key) then
     begin
       GetKeyAxisBounds(Canvas.Height, Key, LowestKey, HighestKey,
         Settings.KeyThickness, StartPosition, EndPosition);
       DrawKeyboardKey(Canvas,
-        KeyboardRight - Round(Settings.KeyLength * 0.62),
-        StartPosition, KeyboardRight, EndPosition,
+        KeyboardLeft, StartPosition,
+        KeyboardLeft + Round(Settings.KeyLength * 0.62), EndPosition,
         Settings.Palette.BlackKey, False, Settings);
     end;
 end;
