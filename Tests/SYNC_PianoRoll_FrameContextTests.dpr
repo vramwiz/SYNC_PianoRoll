@@ -5,6 +5,7 @@
 {$APPTYPE CONSOLE}
 
 uses
+  Winapi.Windows,
   System.Math,
   System.SysUtils,
   AviUtl2FilterTypes in 'Source\Lib\AviUtl2FilterTypes.pas',
@@ -70,7 +71,7 @@ begin
   SharedState.Frame := 90;
   SharedState.Rate := 30;
   SharedState.Scale := 1;
-  SharedState.UpdateTick := 1000;
+  SharedState.UpdateTick := GetTickCount64;
 
   SetObject(ObjectA, 1, 10, 10);
   SetObject(ObjectB, 2, 10, 50);
@@ -94,7 +95,7 @@ begin
   // 新しい共有更新番号を受信したら、各コンテキストを個別に再基準化する。
   SharedState.Sequence := 4;
   SharedState.Frame := 120;
-  SharedState.UpdateTick := 2000;
+  SharedState.UpdateTick := GetTickCount64;
   ObjectA.Frame := 12;
   CheckResolved(VideoA, SharedState, 120, 'object A re-anchor');
   ObjectA.Frame := 13;

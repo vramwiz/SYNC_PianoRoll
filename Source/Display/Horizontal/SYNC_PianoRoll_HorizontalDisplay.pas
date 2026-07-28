@@ -332,12 +332,12 @@ begin
   if not Settings.ShowLanes then
     Exit;
 
-  // 白鍵レーンを敷き、黒鍵レーンを白鍵の境界へ重ねる。
+  // 背景レーンは鍵盤の白黒によらず同じ幅とし、各鍵盤の中心へ揃える。
   for Key := LowestKey to HighestKey do
     if not IsPianoBlackKey(Key) then
     begin
-      GetKeyAxisBounds(Canvas.Height, Key, LowestKey, HighestKey,
-        Settings.KeyThickness, StartPosition, EndPosition);
+      GetPianoRollNoteAxisBounds(Canvas.Height, Key, LowestKey, HighestKey,
+        Settings.KeyThickness, 1.0, True, StartPosition, EndPosition);
       Canvas.FillRectangle(StrikePosition, StartPosition, Canvas.Width,
         EndPosition, Settings.Palette.WhiteLane);
     end;
@@ -345,8 +345,8 @@ begin
   for Key := LowestKey to HighestKey do
     if IsPianoBlackKey(Key) then
     begin
-      GetKeyAxisBounds(Canvas.Height, Key, LowestKey, HighestKey,
-        Settings.KeyThickness, StartPosition, EndPosition);
+      GetPianoRollNoteAxisBounds(Canvas.Height, Key, LowestKey, HighestKey,
+        Settings.KeyThickness, 1.0, True, StartPosition, EndPosition);
       Canvas.FillRectangle(StrikePosition, StartPosition, Canvas.Width,
         EndPosition, Settings.Palette.BlackLane);
     end;
@@ -392,9 +392,9 @@ procedure THorizontalPianoRollDisplay.Draw(var Canvas: TPianoRollCanvas;
   const Settings: TPianoRollDisplaySettings);
 var
   BottomPosition, EndPosition, I: Integer;
-  LaneBottom, LaneTop, NoteBottom, NoteTop: Integer;
+  NoteBottom, NoteTop: Integer;
   LeftPosition, RightPosition, StartPosition, StrikePosition: Integer;
-  EndSeconds, PixelsPerSecond, Thickness: Double;
+  EndSeconds, PixelsPerSecond: Double;
   HighestKey, LowestKey, MaxMusicKey, MaxTrack, MinMusicKey, MinTrack: Integer;
   Note: TPianoRollNoteData;
 begin
@@ -429,7 +429,6 @@ begin
 
   if Settings.DisplayTime <= 0 then
     Exit;
-  Thickness := EnsureRange(Settings.NoteThickness, 0.05, 1.0);
 
   for I := 0 to Data.NoteCount - 1 do
   begin
@@ -451,12 +450,9 @@ begin
     if (RightPosition < 0) or (LeftPosition >= Canvas.Width) then
       Continue;
 
-    GetKeyAxisBounds(Canvas.Height, Note.Key, LowestKey, HighestKey,
-      Settings.KeyThickness, LaneTop, LaneBottom);
-    NoteTop := LaneTop +
-      Round((LaneBottom - LaneTop) * (1.0 - Thickness) / 2.0);
-    NoteBottom := LaneBottom -
-      Round((LaneBottom - LaneTop) * (1.0 - Thickness) / 2.0);
+    GetPianoRollNoteAxisBounds(Canvas.Height, Note.Key, LowestKey, HighestKey,
+      Settings.KeyThickness, Settings.NoteThickness, True,
+      NoteTop, NoteBottom);
     BottomPosition := Max(NoteTop + 1, NoteBottom);
     DrawNote(Canvas, LeftPosition, NoteTop,
       Max(LeftPosition + 1, RightPosition), BottomPosition,

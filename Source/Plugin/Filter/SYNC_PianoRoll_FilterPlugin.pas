@@ -226,7 +226,7 @@ var
   TimeSeconds: Double;
 begin
   try
-    // 単体配置とInput＋Filterの双方で、対象へ渡されたローカル時刻を使う。
+    // 単体配置はローカル時刻、Input＋Filterは入力開始時間込みの時刻を使う。
     if TryGetPianoRollTimeSeconds(Video, TimeSeconds) then
     begin
       MusicFileName := Trim(string(MusicFileItem.Value));

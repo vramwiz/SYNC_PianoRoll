@@ -6,6 +6,9 @@ interface
 
 function IsPianoBlackKey(MidiKey: Integer): Boolean;
 function GetPianoKeyPitchCenter(MidiKey: Integer): Double;
+procedure GetPianoRollNoteAxisBounds(AxisLength, MidiKey, LowestKey,
+  HighestKey: Integer; KeyThickness, NoteThickness: Double;
+  ReversePitchAxis: Boolean; out StartPosition, EndPosition: Integer);
 procedure ResolvePianoRollPitchRange(CenterNote, VisibleNoteCount: Integer;
   out LowestNote, HighestNote: Integer);
 
@@ -15,6 +18,8 @@ uses
   System.Math;
 
 const
+  // 隣り合う半音の中心を維持しつつ重なりを抑える共通音階帯幅。
+  UNIFORM_PITCH_BAND_RATIO = 0.62;
   // 各キーの中心位置。1.0が白鍵1個分の音階方向距離を表す。
   PITCH_CENTER_IN_OCTAVE: array[0..11] of Double = (
     0.5, 1.0, 1.5, 2.0, 2.5, 3.5,
@@ -43,6 +48,31 @@ begin
     Dec(OctaveIndex);
   end;
   Result := OctaveIndex * 7.0 + PITCH_CENTER_IN_OCTAVE[PitchClass];
+end;
+
+procedure GetPianoRollNoteAxisBounds(AxisLength, MidiKey, LowestKey,
+  HighestKey: Integer; KeyThickness, NoteThickness: Double;
+  ReversePitchAxis: Boolean; out StartPosition, EndPosition: Integer);
+var
+  AxisCenter, Direction, RangeCenter: Double;
+  NoteWidth: Integer;
+begin
+  KeyThickness := Max(1.0, KeyThickness);
+  NoteThickness := EnsureRange(NoteThickness, 0.05, 1.0);
+  RangeCenter := (GetPianoKeyPitchCenter(LowestKey) +
+    GetPianoKeyPitchCenter(HighestKey)) * 0.5;
+  if ReversePitchAxis then
+    Direction := -1.0
+  else
+    Direction := 1.0;
+  AxisCenter := AxisLength * 0.5 + Direction *
+    (GetPianoKeyPitchCenter(MidiKey) - RangeCenter) * KeyThickness;
+
+  // 背景レーンとノートは鍵盤の白黒によらず同じ基準幅を使用する。
+  NoteWidth := Max(1, Round(KeyThickness * UNIFORM_PITCH_BAND_RATIO *
+    NoteThickness));
+  StartPosition := Round(AxisCenter - NoteWidth * 0.5);
+  EndPosition := StartPosition + NoteWidth;
 end;
 
 procedure ResolvePianoRollPitchRange(CenterNote, VisibleNoteCount: Integer;

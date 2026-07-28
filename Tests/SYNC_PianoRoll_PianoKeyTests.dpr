@@ -16,7 +16,9 @@ begin
 end;
 
 var
-  HighestNote, LowestNote: Integer;
+  BlackEnd, BlackStart, HighestNote, LowestNote: Integer;
+  ReverseBlackEnd, ReverseBlackStart: Integer;
+  ReverseWhiteEnd, ReverseWhiteStart, WhiteEnd, WhiteStart: Integer;
 begin
   Check(not IsPianoBlackKey(60), 'C4 must be a white key');
   Check(IsPianoBlackKey(61), 'C sharp 4 must be a black key');
@@ -30,6 +32,28 @@ begin
     GetPianoKeyPitchCenter(60), 1.0), 'C to D position mismatch');
   Check(SameValue(GetPianoKeyPitchCenter(72) -
     GetPianoKeyPitchCenter(60), 7.0), 'octave position mismatch');
+  GetPianoRollNoteAxisBounds(640, 60, 60, 72, 40.0, 0.8, False,
+    WhiteStart, WhiteEnd);
+  GetPianoRollNoteAxisBounds(640, 61, 60, 72, 40.0, 0.8, False,
+    BlackStart, BlackEnd);
+  Check((WhiteEnd - WhiteStart) = (BlackEnd - BlackStart),
+    'white and black note widths must match');
+  Check((WhiteEnd - WhiteStart) = 20,
+    'note width must use the common narrow pitch band');
+  Check((BlackStart + BlackEnd) - (WhiteStart + WhiteEnd) = 40,
+    'vertical notes must align with their key centers');
+  GetPianoRollNoteAxisBounds(240, 60, 60, 72, 20.0, 0.8, True,
+    ReverseWhiteStart, ReverseWhiteEnd);
+  GetPianoRollNoteAxisBounds(240, 61, 60, 72, 20.0, 0.8, True,
+    ReverseBlackStart, ReverseBlackEnd);
+  Check((ReverseWhiteEnd - ReverseWhiteStart) =
+    (ReverseBlackEnd - ReverseBlackStart),
+    'horizontal white and black note widths must match');
+  Check((ReverseWhiteEnd - ReverseWhiteStart) = 10,
+    'horizontal note width must use the common narrow pitch band');
+  Check((ReverseBlackStart + ReverseBlackEnd) -
+    (ReverseWhiteStart + ReverseWhiteEnd) = -20,
+    'horizontal notes must align with their reversed key centers');
   ResolvePianoRollPitchRange(66, 13, LowestNote, HighestNote);
   Check((LowestNote = 60) and (HighestNote = 72),
     'odd centered pitch range mismatch');

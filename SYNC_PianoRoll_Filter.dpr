@@ -7,6 +7,9 @@
 uses
   Winapi.Windows,
   AviUtl2FilterTypes in 'Source\Lib\AviUtl2FilterTypes.pas',
+  SharedMemoryBase in 'Source\Lib\SharedMemoryBase.pas',
+  SYNC_PianoRoll_FrameShared in 'Source\Common\Timeline\SYNC_PianoRoll_FrameShared.pas',
+  SYNC_PianoRoll_ContextManager in 'Source\Common\Timeline\SYNC_PianoRoll_ContextManager.pas',
   SYNC_PianoRoll_Time in 'Source\Common\Timeline\SYNC_PianoRoll_Time.pas',
   RTTIPersistent in 'Source\Lib\SongReader\RTTIPersistent.pas',
   RTTIPersistentIni in 'Source\Lib\SongReader\RTTIPersistentIni.pas',

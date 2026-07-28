@@ -11,9 +11,9 @@ Filterの単体配置では画面全体へ描画し、Input＋Filter配置では
 - `SYNC_PianoRoll_Input.dpr/.dproj`: 標準変形を使う構成の透明ベース画像を提供し、単体配置との互換確認用として同じフォルダーへ置く。
 - `Source\Plugin\Filter\SYNC_PianoRoll_FilterPlugin.pas`: Filter登録、設定取得、表示実装の選択を担当する。
 - `Source\Plugin\Input\SYNC_PianoRoll_InputPlugin.pas`: ファイル名からベース画像の寸法、時間、フレームレートを生成する。
-- `Source\Common\Timeline\SYNC_PianoRoll_Time.pas`: Filter対象へ渡されたローカル再生時刻を取得する。
-- `Source\Common\Timeline\SYNC_PianoRoll_FrameShared.pas`: 旧Input用共有処理。現在のFilterからは参照しない。
-- `Source\Common\Timeline\SYNC_PianoRoll_ContextManager.pas`: 旧共有フレーム構成の回帰確認用。現在のFilterからは参照しない。
+- `Source\Common\Timeline\SYNC_PianoRoll_Time.pas`: 単体FilterとInput＋Filterの配置方式に応じた同期時刻を取得する。
+- `Source\Common\Timeline\SYNC_PianoRoll_FrameShared.pas`: Inputが受け取った開始時間込みのフレームをFilterへ共有する。
+- `Source\Common\Timeline\SYNC_PianoRoll_ContextManager.pas`: Inputフレームとローカルフレームをオブジェクト別に対応付けて補間する。
 - `Source\Common\Data\SYNC_PianoRoll_MusicData.pas`: 元音楽ファイルの解析結果を描画用の読み取り専用スナップショットとして共有する。
 - `Source\Common\Color\SYNC_PianoRoll_Colors.pas`: RGBA色型、描画共通パレット、単色と配色バリエーションを定義する。
 - `Source\Common\Layout\SYNC_PianoRoll_DisplayTypes.pas`: 縦横に依存しない表示設定と表示実装の共通契約を定義する。
@@ -28,14 +28,14 @@ Filterの単体配置では画面全体へ描画し、Input＋Filter配置では
 - `Source\Lib\SongReader`: `SYNC_Motion`から導入したMIDI、UST、VSQX、MusicXML、MuseScore解析処理。
 - `Tests\SYNC_PianoRoll_FrameContextTests.dpr`: 共有メモリとオブジェクト別フレーム補間の回帰テスト。
 - `Tests\SYNC_PianoRoll_MusicDataTests.dpr`: 最小MIDIの直接解析とキャッシュ更新の回帰テスト。
-- `Tests\SYNC_PianoRoll_PianoKeyTests.dpr`: 白鍵・黒鍵判定と白鍵単位の音階方向位置を検証する。
+- `Tests\SYNC_PianoRoll_PianoKeyTests.dpr`: 白鍵・黒鍵判定、白鍵単位の音階位置、白黒共通のノート幅を検証する。
 - `Tests\SYNC_PianoRoll_ColorTests.dpr`: 既存配色と旧実装から移植した13種類の共通色計算を検証する。
 - `Tests\SYNC_PianoRoll_PitchFollowTests.dpr`: 3種類の音域追従、和音、未来ノート、MIDI範囲端を検証する。
 - `Tests\SYNC_PianoRoll_PluginLoadTests.dpr`: Filter登録項目、初期値、選択肢配列のロードテスト。
 - `Tests\SYNC_PianoRoll_FilterSettingsTests.dpr`: 実Filter DLLの音域設定とサイズプリセット適用を検証する。
 - `Tests\SYNC_PianoRoll_RenderTests.dpr`: 縦表示のRGBA出力、配色、寸法変更、線幅連動、打鍵発光を検証する描画テスト。
 - `Tests\SYNC_PianoRoll_HorizontalRenderTests.dpr`: 横表示の座標、鍵盤、レーン、拍線、ノート、打鍵発光を検証する。
-- `Tests\SYNC_PianoRoll_StandaloneTimeTests.dpr`: 単体フィルターへ渡されたローカル時刻の取得を検証する。
+- `Tests\SYNC_PianoRoll_StandaloneTimeTests.dpr`: 単体Filterのローカル時刻とInput＋Filterの開始時間込み同期を検証する。
 
 AviUtl2上の識別名は次の値で固定する。
 
@@ -62,8 +62,11 @@ Filterは、タイムラインへ直接配置する単体映像フィルター�
 Input＋Filter方式ではInputのファイル名から生成したベース画像の寸法が渡される。
 縦表示と横表示は同じRGBAキャンバス寸法を受け取り、それぞれの時間方向と音階方向へ座標を割り当てる。
 
-音楽との同期時刻は`Object_.Time`を使い、Filterの配置先頭を音楽データの0秒とする。
-Inputプラグイン、共有メモリ、シーン絶対フレームをFilterの動作条件にしない。
+単体Filterでは`Object_.Time`を使い、Filterの配置先頭を音楽データの0秒とする。
+Input＋Filter方式ではInputの`func_read_video`へ渡されたフレームを共有し、入力設定の`開始時間`を含む
+時刻を音楽との同期に使う。Input再取得が省略された再描画では、Object ID＋Effect ID別に保持した
+Inputフレームと`Object_.Frame`の対応から時刻を補間する。新規基準には直近1秒以内に更新された
+共有値だけを採用し、過去のオブジェクトやプロジェクトの値を誤用しない。
 
 単体Filterはシーン全体へ直接描画するため、ベース画像オブジェクトの標準変形を利用できない。
 位置移動、回転、拡大率、透明度等が必要な場合はInput＋Filter方式を使う。
@@ -121,7 +124,8 @@ D:\DelphiProg\test\Syncroh2\Plugin_Extension\Music\PianoRoll
 - 表示設定の保持方法と、将来必要になる永続データの形式。
 
 旧INIを中心としたデータ経路、RTTI／INI保存クラス、VCLフォーム、`TBitmap`依存の描画、
-旧共有メモリ、旧コンテキスト管理、複数の責務が混在した巨大ユニットは移植しない。
+旧共有メモリと旧コンテキスト管理の実装そのもの、複数の責務が混在した巨大ユニットは移植しない。
+Input／Filter間の同期は開始時間を渡す最小共有状態と、オブジェクト別の小さな時刻基準として作り直す。
 
 ## ソースフォルダーの分離方針
 
@@ -401,6 +405,9 @@ RGBAキャンバスの`BlendRadialGlow`は中心からの距離に応じてア�
 鍵盤とノートの音階方向位置は、半音を単純に等分せず、白鍵1個を1.0とする共通音階座標で計算する。
 `鍵盤の太さ`（初期値40px）は白鍵1個の音階方向サイズ、`鍵盤の長さ`（初期値120px）は
 発音位置から時間方向へ伸びる白鍵の長さとする。黒鍵は白鍵間の中心へ太さ62%、長さ62%で重ねる。
+背景レーンの音階方向の幅は鍵盤の白黒によって変えず、すべて黒鍵と同じ`鍵盤の太さ × 62%`とする。
+ノートも同じ共通音階帯を基準に`共通音階帯の幅 × ノート太さ`で描画する。
+背景レーンと各ノートは対応する白鍵または黒鍵の音階中心へ揃え、縦表示と横表示で同じ規則を使用する。
 表示音域は固定ピクセルの`鍵盤の太さ`を維持し、`表示音階数`と`中央ノート`から決定する。
 表示音階数は白鍵数ではなく、黒鍵を含む連続MIDIノート数とする。奇数個では中央ノートを範囲中央へ置き、
 偶数個では中央ノートを上側の中央として扱う。MIDI範囲0～127の端へ達した場合は範囲全体を内側へ移し、
@@ -475,10 +482,18 @@ cmd /c "call ""C:\Program Files (x86)\Embarcadero\Studio\37.0\bin\rsvars.bat"" &
 
 ## 次の実装候補
 
-現在の最小ピアノロール描画と3種類の音域追従は実機確認済み。
-現在の仕様を基本として維持し、次に拡張する場合は旧`Syncroh2_Filter_PianoRoll.dpr`に存在した
-トラック別／MIDIキー別の色バリエーションから追加する。追加要素は旧実装に合わせ、
-旧実装にない機能は必要性を別途確認してから採用する。
+現在の最小ピアノロール描画、3種類の音域追従、連続減衰方式の発音位置発光、
+旧`Syncroh2_Filter_PianoRoll.dpr`に存在した全13種類のトラック別／MIDIキー別配色は実装・実機確認済み。
+これらの現行仕様を基本として維持する。
 
-発音位置の発光は連続減衰方式へ修正し、実機確認済み。
-3D表示は円環／トンネル型、透視平面型、中央発音型を候補とし、具体的なスタイル仕様を決めてから実装する。
+### 3D表示より先に対応する課題
+
+1. 鍵盤サイズとは別のバリエーションとして、すべてを白鍵型で描画できるようにする。
+   半音を持たないハープ等の楽器での利用を主な目的とする。
+   サイズ設定とは別のリストから種類を選び、ボタンを押して採用する方式とする。
+2. 鍵盤の色バリエーションを追加する。
+   黒鍵と白鍵の色が通常と逆の楽器への対応を主目的とし、次にMVの雰囲気へ合わせた配色を可能にする。
+   この設定を1の鍵盤種類へ含めるか、独立した設定とするかは実装前に検討する。
+
+次の機能拡張候補は3D表示とする。円環／トンネル型、透視平面型、中央発音型を候補とし、
+上記の優先課題を対応した後、具体的なスタイル仕様を決めてから実装する。

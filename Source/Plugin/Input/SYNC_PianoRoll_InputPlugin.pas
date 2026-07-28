@@ -128,7 +128,7 @@ begin
 
   Context := PPianoRollInputContext(Ih);
   FillChar(Buf^, Context^.Info.biSizeImage, 0);
-  // 旧共有フレーム経路の互換確認用に発行し、現行Filterはこの値へ依存しない。
+  // 開始時間を含むInputの読込フレームをFilterの音楽同期へ渡す。
   PublishPianoRollFrame(Frame, Context^.Rate, Context^.Scale);
   Result := Context^.Info.biSizeImage;
 end;

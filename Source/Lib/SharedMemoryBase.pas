@@ -1,6 +1,6 @@
 ﻿unit SharedMemoryBase;
 
-// Syncroh2から移入し、旧共有フレーム経路に必要な名前付き共有メモリ管理だけを提供する。
+// Syncroh2から移入し、Input／Filter間のフレーム同期に必要な名前付き共有メモリ管理だけを提供する。
 
 interface
 

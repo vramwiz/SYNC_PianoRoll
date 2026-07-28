@@ -141,6 +141,7 @@ type
 const
   FILTER_FLAG_VIDEO = 1;
   FILTER_FLAG_FILTER = 8;
+  OBJECT_INFO_FLAG_FILTER_OBJECT = 1;
 
 implementation
 

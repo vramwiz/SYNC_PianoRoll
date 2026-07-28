@@ -1,7 +1,6 @@
 ﻿unit SYNC_PianoRoll_FrameShared;
 
-// 旧Input／Filter構成の互換確認用に、DLL間で現在フレームを受け渡す。
-// 現行FilterはObject_.Timeを使うため、この共有領域を動作条件にしない。
+// Input＋Filter構成で、入力ファイルの開始時間を含む現在フレームをDLL間で受け渡す。
 
 interface
 
