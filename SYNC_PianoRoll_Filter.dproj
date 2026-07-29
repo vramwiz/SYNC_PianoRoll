@@ -125,7 +125,8 @@
         <DCCReference Include="Source\Common\Layout\SYNC_PianoRoll_PitchFollow.pas"/>
         <DCCReference Include="Source\Display\Vertical\SYNC_PianoRoll_VerticalDisplay.pas"/>
         <DCCReference Include="Source\Display\Horizontal\SYNC_PianoRoll_HorizontalDisplay.pas"/>
-        <DCCReference Include="Source\Display\Perspective3D\SYNC_PianoRoll_Perspective3DDisplay.pas"/>
+        <DCCReference Include="Source\Display\Vertical3D\SYNC_PianoRoll_Vertical3DDisplay.pas"/>
+        <DCCReference Include="Source\Display\Horizontal3D\SYNC_PianoRoll_Horizontal3DDisplay.pas"/>
         <DCCReference Include="Source\Common\Render\SYNC_PianoRoll_Renderer.pas"/>
         <DCCReference Include="Source\Plugin\Filter\SYNC_PianoRoll_FilterPlugin.pas"/>
         <BuildConfiguration Include="Base">

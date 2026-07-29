@@ -205,20 +205,19 @@ begin
       Check(CapturedTrackPixels = 0,
         'harp keyboard rendered an accidental note');
 
-      // 現在実装済みの3D Type1は横でDrawPolyを使い、縦は2Dへ戻す。
+      // 3D Type1は設定された縦横それぞれの専用DrawPoly経路を使う。
       PFILTER_ITEM_SELECT(Items^[5])^.Value := 0;
       PFILTER_ITEM_SELECT(Items^[2])^.Value := 1;
+      PFILTER_ITEM_SELECT(Items^[4])^.Value := 0;
+      CapturedPolyCalls := 0;
+      Table^.Func_Proc_Video(@Video);
+      Check(CapturedPolyCalls > 0,
+        '3D vertical Type1 did not use DrawPoly');
       PFILTER_ITEM_SELECT(Items^[4])^.Value := 1;
       CapturedPolyCalls := 0;
       Table^.Func_Proc_Video(@Video);
       Check(CapturedPolyCalls > 0,
         '3D horizontal Type1 did not use DrawPoly');
-      PFILTER_ITEM_SELECT(Items^[4])^.Value := 0;
-      CapturedPolyCalls := 0;
-      CapturedOpaquePixels := 0;
-      Table^.Func_Proc_Video(@Video);
-      Check((CapturedPolyCalls = 0) and (CapturedOpaquePixels > 0),
-        'unimplemented 3D vertical did not fall back to 2D vertical');
 
       // 大プリセットのボタンでローカル値と選択中オブジェクトを同時に更新する。
       FillChar(Edit, SizeOf(Edit), 0);

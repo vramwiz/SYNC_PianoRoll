@@ -37,7 +37,8 @@ uses
   SYNC_PianoRoll_PitchFollow in 'Source\Common\Layout\SYNC_PianoRoll_PitchFollow.pas',
   SYNC_PianoRoll_VerticalDisplay in 'Source\Display\Vertical\SYNC_PianoRoll_VerticalDisplay.pas',
   SYNC_PianoRoll_HorizontalDisplay in 'Source\Display\Horizontal\SYNC_PianoRoll_HorizontalDisplay.pas',
-  SYNC_PianoRoll_Perspective3DDisplay in 'Source\Display\Perspective3D\SYNC_PianoRoll_Perspective3DDisplay.pas',
+  SYNC_PianoRoll_Vertical3DDisplay in 'Source\Display\Vertical3D\SYNC_PianoRoll_Vertical3DDisplay.pas',
+  SYNC_PianoRoll_Horizontal3DDisplay in 'Source\Display\Horizontal3D\SYNC_PianoRoll_Horizontal3DDisplay.pas',
   SYNC_PianoRoll_Renderer in 'Source\Common\Render\SYNC_PianoRoll_Renderer.pas',
   SYNC_PianoRoll_FilterPlugin in 'Source\Plugin\Filter\SYNC_PianoRoll_FilterPlugin.pas';
 

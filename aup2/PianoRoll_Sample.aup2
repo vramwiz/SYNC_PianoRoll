@@ -11,8 +11,8 @@ video.height=1080
 video.rate=30
 video.scale=1
 audio.rate=44100
-cursor.frame=198
-cursor.layer=0
+cursor.frame=178
+cursor.layer=3
 preview.frame=0
 display.frame=0
 display.layer=0
@@ -80,7 +80,7 @@ effect.name=音声再生
 左右=0.00
 [3]
 layer=1
-frame=162,229
+frame=162,360
 group=3
 [3.0]
 effect.name=音声ファイル
@@ -198,11 +198,11 @@ effect.name=SYNC_ピアノロール_Filter
 [6]
 layer=2
 focus=1
-frame=162,229
+frame=162,360
 group=3
 [6.0]
 effect.name=動画ファイル
-再生位置=2.700,4.967,再生範囲,0
+再生位置=1.167,7.800,再生範囲,0
 再生速度=100.00
 ファイル=D:\DelphiProg\test\SYNC_PianoRoll\1920_1080_3600_30_1.syncpianoroll
 トラック=0

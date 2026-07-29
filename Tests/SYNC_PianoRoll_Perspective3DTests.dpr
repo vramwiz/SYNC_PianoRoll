@@ -1,6 +1,6 @@
 program SYNC_PianoRoll_Perspective3DTests;
 
-// 3D平面の頂点生成、ハープの半音除外、DrawPoly非対応時の判定を検証する。
+// 縦横3Dの座標軸、押し出し、ハープの半音除外、DrawPoly判定を検証する。
 
 {$APPTYPE CONSOLE}
 
@@ -14,7 +14,8 @@ uses
   SYNC_PianoRoll_RGBA in 'Source\Common\Render\SYNC_PianoRoll_RGBA.pas',
   SYNC_PianoRoll_DisplayTypes in 'Source\Common\Layout\SYNC_PianoRoll_DisplayTypes.pas',
   SYNC_PianoRoll_PitchFollow in 'Source\Common\Layout\SYNC_PianoRoll_PitchFollow.pas',
-  SYNC_PianoRoll_Perspective3DDisplay in 'Source\Display\Perspective3D\SYNC_PianoRoll_Perspective3DDisplay.pas';
+  SYNC_PianoRoll_Vertical3DDisplay in 'Source\Display\Vertical3D\SYNC_PianoRoll_Vertical3DDisplay.pas',
+  SYNC_PianoRoll_Horizontal3DDisplay in 'Source\Display\Horizontal3D\SYNC_PianoRoll_Horizontal3DDisplay.pas';
 
 type
   TMockMusicData = class(TInterfacedObject, IPianoRollMusicData)
@@ -34,12 +35,15 @@ type
 
 var
   AnchorHeight, AnchorWidth: Integer;
+  CapturedBlackMaxX, CapturedBlackMinX: Single;
   CapturedBlackMaxY, CapturedBlackMinY: Single;
   CapturedBlackMaxZ, CapturedBlackMinZ: Single;
   CapturedNoteVertexCount: Integer;
+  CapturedNoteXRange: Single;
   CapturedNoteYRange: Single;
   CapturedNoteZRange: Single;
   CapturedVertexCount, CapturedVertexType: Integer;
+  CapturedWhiteMaxX, CapturedWhiteMinX: Single;
   CapturedWhiteMaxY, CapturedWhiteMinY: Single;
   CapturedWhiteMaxZ, CapturedWhiteMinZ: Single;
 
@@ -53,20 +57,26 @@ function CapturePoly(VertexType: Integer; VertexList: Pointer;
   VertexNum: Integer; Resource: PWideChar): Byte; cdecl;
 var
   I: Integer;
-  MaxNoteY, MaxNoteZ, MinNoteY, MinNoteZ: Single;
+  MaxNoteX, MaxNoteY, MaxNoteZ, MinNoteX, MinNoteY, MinNoteZ: Single;
   Vertex: TVERTEX_COLOR;
 begin
   CapturedVertexType := VertexType;
   CapturedVertexCount := VertexNum;
   CapturedNoteVertexCount := 0;
+  MinNoteX := MaxSingle;
+  MaxNoteX := -MaxSingle;
   MinNoteY := MaxSingle;
   MaxNoteY := -MaxSingle;
   MinNoteZ := MaxSingle;
   MaxNoteZ := -MaxSingle;
   CapturedWhiteMinY := MaxSingle;
   CapturedWhiteMaxY := -MaxSingle;
+  CapturedWhiteMinX := MaxSingle;
+  CapturedWhiteMaxX := -MaxSingle;
   CapturedBlackMinY := MaxSingle;
   CapturedBlackMaxY := -MaxSingle;
+  CapturedBlackMinX := MaxSingle;
+  CapturedBlackMaxX := -MaxSingle;
   CapturedWhiteMinZ := MaxSingle;
   CapturedWhiteMaxZ := -MaxSingle;
   CapturedBlackMinZ := MaxSingle;
@@ -79,6 +89,8 @@ begin
       (Abs(Vertex.B - 9 / 255.0) < 0.0001) then
     begin
       Inc(CapturedNoteVertexCount);
+      MinNoteX := Min(MinNoteX, Vertex.X);
+      MaxNoteX := Max(MaxNoteX, Vertex.X);
       MinNoteY := Min(MinNoteY, Vertex.Y);
       MaxNoteY := Max(MaxNoteY, Vertex.Y);
       MinNoteZ := Min(MinNoteZ, Vertex.Z);
@@ -88,6 +100,8 @@ begin
       (Abs(Vertex.G - 242 / 255.0) < 0.0001) and
       (Abs(Vertex.B - 242 / 255.0) < 0.0001) then
     begin
+      CapturedWhiteMinX := Min(CapturedWhiteMinX, Vertex.X);
+      CapturedWhiteMaxX := Max(CapturedWhiteMaxX, Vertex.X);
       CapturedWhiteMinY := Min(CapturedWhiteMinY, Vertex.Y);
       CapturedWhiteMaxY := Max(CapturedWhiteMaxY, Vertex.Y);
       CapturedWhiteMinZ := Min(CapturedWhiteMinZ, Vertex.Z);
@@ -97,12 +111,15 @@ begin
       (Abs(Vertex.G - 24 / 255.0) < 0.0001) and
       (Abs(Vertex.B - 24 / 255.0) < 0.0001) then
     begin
+      CapturedBlackMinX := Min(CapturedBlackMinX, Vertex.X);
+      CapturedBlackMaxX := Max(CapturedBlackMaxX, Vertex.X);
       CapturedBlackMinY := Min(CapturedBlackMinY, Vertex.Y);
       CapturedBlackMaxY := Max(CapturedBlackMaxY, Vertex.Y);
       CapturedBlackMinZ := Min(CapturedBlackMinZ, Vertex.Z);
       CapturedBlackMaxZ := Max(CapturedBlackMaxZ, Vertex.Z);
     end;
   end;
+  CapturedNoteXRange := MaxNoteX - MinNoteX;
   CapturedNoteYRange := MaxNoteY - MinNoteY;
   CapturedNoteZRange := MaxNoteZ - MinNoteZ;
   Result := 1;
@@ -170,6 +187,8 @@ end;
 var
   BaselineBlackTopZ, BaselineWhiteTopZ: Single;
   Data: IPianoRollMusicData;
+  HorizontalBlackTopZ, HorizontalWhiteTopZ: Single;
+  HorizontalStandardVertexCount, HorizontalWhiteThicknessVertexCount: Integer;
   ObjectInfo: TOBJECT_INFO;
   Settings: TPianoRollDisplaySettings;
   StandardVertexCount: Integer;
@@ -192,8 +211,8 @@ begin
   Settings.SingleTrackColor := PianoRollColor(7, 8, 9, 255);
   Settings.DisplayTime3D := 4.0;
 
-  Check(DrawPerspectivePianoRoll3D(@Video, Data, 0.0, Settings),
-    '3D draw failed');
+  Check(DrawVerticalPianoRoll3D(@Video, Data, 0.0, Settings),
+    'vertical 3D draw failed');
   Check(CapturedVertexType = VERTEX_QUAD_COLOR, 'vertex type mismatch');
   Check((CapturedVertexCount mod 4) = 0, 'quad vertex count mismatch');
   Check(CapturedNoteVertexCount = 8, 'standard notes were not drawn');
@@ -215,7 +234,7 @@ begin
   BaselineBlackTopZ := CapturedBlackMinZ;
 
   Settings.DisplayTime3D := 30.0;
-  Check(DrawPerspectivePianoRoll3D(@Video, Data, 0.0, Settings),
+  Check(DrawVerticalPianoRoll3D(@Video, Data, 0.0, Settings),
     'extended 3D time draw failed');
   Check(CapturedNoteVertexCount = 12,
     '3D display time did not include the distant future note');
@@ -224,7 +243,7 @@ begin
   Settings.DisplayTime3D := 4.0;
 
   Settings.WhiteKey3DThickness := 10;
-  Check(DrawPerspectivePianoRoll3D(@Video, Data, 0.0, Settings),
+  Check(DrawVerticalPianoRoll3D(@Video, Data, 0.0, Settings),
     'white key extrusion failed');
   Check(CapturedVertexCount = StandardVertexCount + 3 * 4,
     'connected white keyboard outer faces mismatch');
@@ -234,7 +253,7 @@ begin
   WhiteThicknessVertexCount := CapturedVertexCount;
 
   Settings.BlackKey3DThickness := 20;
-  Check(DrawPerspectivePianoRoll3D(@Video, Data, 0.0, Settings),
+  Check(DrawVerticalPianoRoll3D(@Video, Data, 0.0, Settings),
     'black key extrusion failed');
   Check(CapturedVertexCount = WhiteThicknessVertexCount + 5 * 12,
     'black key side faces mismatch');
@@ -243,7 +262,7 @@ begin
     'black thickness did not rise from the white top surface');
 
   Settings.Note3DThickness := 30;
-  Check(DrawPerspectivePianoRoll3D(@Video, Data, 0.0, Settings),
+  Check(DrawVerticalPianoRoll3D(@Video, Data, 0.0, Settings),
     'note extrusion failed');
   Check(CapturedVertexCount =
     WhiteThicknessVertexCount + 5 * 12 + 2 * 12,
@@ -253,14 +272,58 @@ begin
   Settings.BlackKey3DThickness := 0;
   Settings.Note3DThickness := 0;
   Settings.KeyboardType := pktHarp7;
-  Check(DrawPerspectivePianoRoll3D(@Video, Data, 0.0, Settings),
+  Check(DrawVerticalPianoRoll3D(@Video, Data, 0.0, Settings),
     'harp 3D draw failed');
   Check(CapturedNoteVertexCount = 4, 'harp accidental was not hidden');
   Check(CapturedVertexCount < StandardVertexCount,
     'harp keyboard and note geometry were not reduced');
 
+  Settings.KeyboardType := pktPiano;
+  Check(DrawHorizontalPianoRoll3D(@Video, Data, 0.0, Settings),
+    'horizontal 3D draw failed');
+  Check(CapturedNoteXRange > 1.0,
+    'horizontal 3D time axis is not on X');
+  Check(CapturedNoteYRange > 1.0,
+    'horizontal 3D pitch axis is not on Y');
+  Check(CapturedNoteZRange < 0.001,
+    'horizontal flat note has unintended Z depth');
+  Check((CapturedBlackMinX >= CapturedWhiteMinX - 0.001) and
+    (CapturedBlackMaxX < CapturedWhiteMaxX),
+    'horizontal black keys are not placed within the white key X range');
+  HorizontalStandardVertexCount := CapturedVertexCount;
+  HorizontalWhiteTopZ := CapturedWhiteMinZ;
+  HorizontalBlackTopZ := CapturedBlackMinZ;
+
+  Settings.WhiteKey3DThickness := 10;
+  Check(DrawHorizontalPianoRoll3D(@Video, Data, 0.0, Settings),
+    'horizontal white key extrusion failed');
+  Check(CapturedVertexCount = HorizontalStandardVertexCount + 3 * 4,
+    'horizontal connected white keyboard outer faces mismatch');
+  Check((Abs(CapturedWhiteMinZ - HorizontalWhiteTopZ) < 0.001) and
+    (Abs(CapturedBlackMinZ - HorizontalBlackTopZ) < 0.001),
+    'horizontal white thickness moved a key top surface');
+  HorizontalWhiteThicknessVertexCount := CapturedVertexCount;
+
+  Settings.BlackKey3DThickness := 20;
+  Check(DrawHorizontalPianoRoll3D(@Video, Data, 0.0, Settings),
+    'horizontal black key extrusion failed');
+  Check(CapturedVertexCount =
+    HorizontalWhiteThicknessVertexCount + 5 * 12,
+    'horizontal black key side faces mismatch');
+  Check(CapturedBlackMinZ < HorizontalBlackTopZ - 1.0,
+    'horizontal black thickness did not rise from the white top surface');
+
+  Settings.Note3DThickness := 30;
+  Check(DrawHorizontalPianoRoll3D(@Video, Data, 0.0, Settings),
+    'horizontal note extrusion failed');
+  Check(CapturedVertexCount =
+    HorizontalWhiteThicknessVertexCount + 5 * 12 + 2 * 12,
+    'horizontal note side faces mismatch');
+
   Video.DrawPoly := nil;
-  Check(not DrawPerspectivePianoRoll3D(@Video, Data, 0.0, Settings),
+  Check(not DrawVerticalPianoRoll3D(@Video, Data, 0.0, Settings),
+    'vertical DrawPoly absence was not reported');
+  Check(not DrawHorizontalPianoRoll3D(@Video, Data, 0.0, Settings),
     'DrawPoly absence was not reported');
   Writeln('PASS');
 end.

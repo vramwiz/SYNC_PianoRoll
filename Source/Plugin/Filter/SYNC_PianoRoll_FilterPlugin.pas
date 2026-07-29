@@ -18,12 +18,13 @@ uses
   System.SysUtils,
   SYNC_PianoRoll_Colors,
   SYNC_PianoRoll_DisplayTypes,
+  SYNC_PianoRoll_Horizontal3DDisplay,
   SYNC_PianoRoll_HorizontalDisplay,
   SYNC_PianoRoll_MusicData,
   SYNC_PianoRoll_PianoKeys,
-  SYNC_PianoRoll_Perspective3DDisplay,
   SYNC_PianoRoll_Renderer,
   SYNC_PianoRoll_Time,
+  SYNC_PianoRoll_Vertical3DDisplay,
   SYNC_PianoRoll_VerticalDisplay;
 
 const
@@ -245,13 +246,27 @@ begin
   end;
 end;
 
-function UseImplementedPerspective3D: Boolean;
+function UsePianoRoll3DType: Boolean;
 begin
-  // 現在実装済みの3D Type1は横方向だけ。未実装の組み合わせは対応する2Dへ戻す。
+  // 未知の分類またはTypeは2D表示へ戻し、不完全な3D形状を描画しない。
   Result := (DisplayCategoryItem.Value = Ord(pdcPiano)) and
     (RenderDimensionItem.Value = Ord(prd3D)) and
-    (StyleTypeItem.Value = Ord(pstType1)) and
-    (OrientationItem.Value = Ord(poHorizontal));
+    (StyleTypeItem.Value = Ord(pstType1));
+end;
+
+function DrawSelectedPianoRoll3D(Video: PFILTER_PROC_VIDEO;
+  const Data: IPianoRollMusicData; TimeSeconds: Double;
+  const Settings: TPianoRollDisplaySettings): Boolean;
+begin
+  // 方向固有の座標系と鍵盤形状は専用ユニットへ委譲する。
+  case OrientationItem.Value of
+    Ord(poVertical):
+      Result := DrawVerticalPianoRoll3D(Video, Data, TimeSeconds, Settings);
+    Ord(poHorizontal):
+      Result := DrawHorizontalPianoRoll3D(Video, Data, TimeSeconds, Settings);
+  else
+    Result := False;
+  end;
 end;
 
 function PianoRollProcVideo(Video: PFILTER_PROC_VIDEO): Byte; cdecl;
@@ -270,8 +285,8 @@ begin
         if TryGetPianoRollMusicData(MusicFileName, MusicData) then
         begin
           BuildDisplaySettings(DisplaySettings);
-          if not UseImplementedPerspective3D or
-            not DrawPerspectivePianoRoll3D(Video, MusicData, TimeSeconds,
+          if not UsePianoRoll3DType or
+            not DrawSelectedPianoRoll3D(Video, MusicData, TimeSeconds,
               DisplaySettings) then
             RenderPianoRoll(Video, MusicData, TimeSeconds,
               ResolvePianoRollDisplay, DisplaySettings);
