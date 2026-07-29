@@ -11,10 +11,23 @@ uses
   SYNC_PianoRoll_RGBA;
 
 type
-  // Filterの共通入口から選択する表示実装。各実装は専用ユニットに置く。
-  TPianoRollDisplayType = (
-    pdtVertical,
-    pdtHorizontal
+  // 表示名を合成せず、分類、描画方式、Type、方向を独立して選択する。
+  TPianoRollDisplayCategory = (
+    pdcPiano
+  );
+
+  TPianoRollRenderDimension = (
+    prd2D,
+    prd3D
+  );
+
+  TPianoRollStyleType = (
+    pstType1
+  );
+
+  TPianoRollOrientation = (
+    poVertical,
+    poHorizontal
   );
 
   // 基準音域から実効音域を動かす追従方式。
@@ -26,6 +39,7 @@ type
 
   TPianoRollDisplaySettings = record
     DisplayTime: Double;      // 発音位置から時間方向の表示端までに含める秒数。
+    DisplayTime3D: Double;    // 3D形状として生成する未来範囲の秒数。
     StrikePosition: Double;   // 時間方向の表示範囲に対する発音位置。0.0～1.0。
     TimeShift: Double;        // 音楽データとタイムラインの同期時刻差。
     VisibleNoteCount: Integer; // 基準音域へ含める連続MIDIノート数。
@@ -35,6 +49,9 @@ type
     KeyLength: Double;        // 鍵盤が伸びる方向の長さ。
     KeyThickness: Double;     // 1鍵の音階方向の太さ。
     NoteThickness: Double;    // 音階方向レーンに対するノートの占有率。
+    WhiteKey3DThickness: Double; // 3D平面から手前へ押し出す白鍵の厚み。0は平面。
+    BlackKey3DThickness: Double; // 3D平面から手前へ押し出す黒鍵の厚み。0は平面。
+    Note3DThickness: Double;     // 3D平面から手前へ押し出すノートの厚み。0は平面。
     NoteDepthEnabled: Boolean; // 縁、面取り、つやによる疑似立体表示。
     ShowLanes: Boolean;       // 白鍵・黒鍵に対応するレーン背景を表示する。
     ShowBeatLines: Boolean;   // 拍線と小節線を表示する。
@@ -75,6 +92,7 @@ procedure SetDefaultPianoRollDisplaySettings(
   out Settings: TPianoRollDisplaySettings);
 begin
   Settings.DisplayTime := 4.0;
+  Settings.DisplayTime3D := 30.0;
   Settings.StrikePosition := 0.80;
   Settings.TimeShift := 0.0;
   // 初期表示はMIDI全域の半分とし、中央ノートの変更を確認しやすくする。
@@ -86,6 +104,9 @@ begin
   Settings.KeyLength := 120.0;
   Settings.KeyThickness := 40.0;
   Settings.NoteThickness := 0.80;
+  Settings.WhiteKey3DThickness := 0.0;
+  Settings.BlackKey3DThickness := 0.0;
+  Settings.Note3DThickness := 0.0;
   Settings.NoteDepthEnabled := True;
   Settings.ShowLanes := True;
   Settings.ShowBeatLines := True;

@@ -65,6 +65,20 @@ type
   PPIXEL_RGBA = ^TPIXEL_RGBA;
 
   TFILTER_PROC_VIDEO_GET_TEX2D = function: Pointer; cdecl;
+  TFILTER_PROC_VIDEO_DRAW_POLY = function(VertexType: Integer;
+    VertexList: Pointer; VertexNum: Integer; Resource: LPCWSTR): Byte; cdecl;
+  TFILTER_PROC_VIDEO_SET_DEFAULT_ANCHOR = procedure(
+    Width, Height: Integer); cdecl;
+
+  TVERTEX_COLOR = packed record
+    X, Y, Z: Single;
+    R, G, B, A: Single;
+  end;
+
+const
+  VERTEX_QUAD_COLOR = 5;
+
+type
   PFILTER_PROC_VIDEO = ^TFILTER_PROC_VIDEO;
   TFILTER_PROC_VIDEO = record
     Scene: PSCENE_INFO;
@@ -73,6 +87,13 @@ type
     SetImageData: procedure(Buffer: PPIXEL_RGBA; Width, Height: Integer); cdecl;
     GetImageTexture2D: TFILTER_PROC_VIDEO_GET_TEX2D;
     GetFramebufferTexture2D: TFILTER_PROC_VIDEO_GET_TEX2D;
+    Edit: Pointer;
+    Param: Pointer;
+    GetOutputImageParam: Pointer;
+    GetImageObject: Pointer;
+    DrawImage: Pointer;
+    DrawPoly: TFILTER_PROC_VIDEO_DRAW_POLY;
+    SetDefaultAnchor: TFILTER_PROC_VIDEO_SET_DEFAULT_ANCHOR;
   end;
 
   TFuncProcVideo = function(Video: PFILTER_PROC_VIDEO): Byte; cdecl;

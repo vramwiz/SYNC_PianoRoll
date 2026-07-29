@@ -15,11 +15,12 @@ type
   TGetFilterPluginTable = function: PFILTER_PLUGIN_TABLE; cdecl;
   TInitializePlugin = function(Version: DWORD): Byte; cdecl;
   TUninitializePlugin = procedure; cdecl;
-  TItemArray = array[0..29] of Pointer;
+  TItemArray = array[0..36] of Pointer;
   PItemArray = ^TItemArray;
 
 var
   CapturedOpaquePixels: Integer;
+  CapturedPolyCalls: Integer;
   CapturedPresetLength: string;
   CapturedPresetNoteThickness: string;
   CapturedPresetThickness: string;
@@ -50,6 +51,13 @@ begin
       (PPixelArray(Buffer)^[I].A = 255) then
       Inc(CapturedTrackPixels);
   end;
+end;
+
+function CapturePoly(VertexType: Integer; VertexList: Pointer;
+  VertexNum: Integer; Resource: LPCWSTR): Byte; cdecl;
+begin
+  Inc(CapturedPolyCalls);
+  Result := 1;
 end;
 
 function GetMockFocusObject: OBJECT_HANDLE; cdecl;
@@ -136,8 +144,14 @@ begin
       Items := PItemArray(Table^.Items);
       Check(Items <> nil, 'plugin items are missing');
       PFILTER_ITEM_FILE(Items^[0])^.Value := PWideChar(MidiFileName);
-      Check(PFILTER_ITEM_SELECT(Items^[4])^.Value = 0,
+      Check(PFILTER_ITEM_SELECT(Items^[5])^.Value = 0,
         'piano keyboard must be the default');
+      Check(PFILTER_ITEM_TRACK(Items^[9])^.Value = 30.0,
+        '3D display time default mismatch');
+      Check((PFILTER_ITEM_TRACK(Items^[18])^.Value = 0) and
+        (PFILTER_ITEM_TRACK(Items^[19])^.Value = 0) and
+        (PFILTER_ITEM_TRACK(Items^[20])^.Value = 0),
+        '3D thickness defaults must be flat');
 
       FillChar(ObjectInfo, SizeOf(ObjectInfo), 0);
       FillChar(Video, SizeOf(Video), 0);
@@ -147,15 +161,16 @@ begin
       ObjectInfo.Height := 360;
       Video.Object_ := @ObjectInfo;
       Video.SetImageData := CaptureImage;
+      Video.DrawPoly := CapturePoly;
 
-      PFILTER_ITEM_TRACK(Items^[8])^.Value := 128;
-      PFILTER_ITEM_TRACK(Items^[9])^.Value := 64;
+      PFILTER_ITEM_TRACK(Items^[12])^.Value := 128;
+      PFILTER_ITEM_TRACK(Items^[13])^.Value := 64;
       CapturedOpaquePixels := 0;
       Table^.Func_Proc_Video(@Video);
       FullRangePixels := CapturedOpaquePixels;
 
-      PFILTER_ITEM_TRACK(Items^[8])^.Value := 1;
-      PFILTER_ITEM_TRACK(Items^[9])^.Value := 61;
+      PFILTER_ITEM_TRACK(Items^[12])^.Value := 1;
+      PFILTER_ITEM_TRACK(Items^[13])^.Value := 61;
       CapturedOpaquePixels := 0;
       Table^.Func_Proc_Video(@Video);
       SingleRangePixels := CapturedOpaquePixels;
@@ -166,29 +181,44 @@ begin
         'pitch range settings did not change the rendered pixels');
 
       // 基準音域外のノートは追従なしでは隠れ、両追従方式では表示される。
-      PFILTER_ITEM_TRACK(Items^[8])^.Value := 12;
-      PFILTER_ITEM_TRACK(Items^[9])^.Value := 0;
-      PFILTER_ITEM_SELECT(Items^[10])^.Value := 0;
+      PFILTER_ITEM_TRACK(Items^[12])^.Value := 12;
+      PFILTER_ITEM_TRACK(Items^[13])^.Value := 0;
+      PFILTER_ITEM_SELECT(Items^[14])^.Value := 0;
       Table^.Func_Proc_Video(@Video);
       Check(CapturedTrackPixels = 0,
         'none follow unexpectedly moved the pitch range');
-      PFILTER_ITEM_SELECT(Items^[10])^.Value := 1;
+      PFILTER_ITEM_SELECT(Items^[14])^.Value := 1;
       Table^.Func_Proc_Video(@Video);
       Check(CapturedTrackPixels > 0,
         'always follow did not move the pitch range');
-      PFILTER_ITEM_SELECT(Items^[10])^.Value := 2;
+      PFILTER_ITEM_SELECT(Items^[14])^.Value := 2;
       Table^.Func_Proc_Video(@Video);
       Check(CapturedTrackPixels > 0,
         'overflow follow did not move the pitch range');
 
       // 実DLLでもハープへ切り替えると半音ノートを描画しない。
-      PFILTER_ITEM_SELECT(Items^[4])^.Value := 1;
-      PFILTER_ITEM_TRACK(Items^[8])^.Value := 1;
-      PFILTER_ITEM_TRACK(Items^[9])^.Value := 61;
-      PFILTER_ITEM_SELECT(Items^[10])^.Value := 0;
+      PFILTER_ITEM_SELECT(Items^[5])^.Value := 1;
+      PFILTER_ITEM_TRACK(Items^[12])^.Value := 1;
+      PFILTER_ITEM_TRACK(Items^[13])^.Value := 61;
+      PFILTER_ITEM_SELECT(Items^[14])^.Value := 0;
       Table^.Func_Proc_Video(@Video);
       Check(CapturedTrackPixels = 0,
         'harp keyboard rendered an accidental note');
+
+      // 現在実装済みの3D Type1は横でDrawPolyを使い、縦は2Dへ戻す。
+      PFILTER_ITEM_SELECT(Items^[5])^.Value := 0;
+      PFILTER_ITEM_SELECT(Items^[2])^.Value := 1;
+      PFILTER_ITEM_SELECT(Items^[4])^.Value := 1;
+      CapturedPolyCalls := 0;
+      Table^.Func_Proc_Video(@Video);
+      Check(CapturedPolyCalls > 0,
+        '3D horizontal Type1 did not use DrawPoly');
+      PFILTER_ITEM_SELECT(Items^[4])^.Value := 0;
+      CapturedPolyCalls := 0;
+      CapturedOpaquePixels := 0;
+      Table^.Func_Proc_Video(@Video);
+      Check((CapturedPolyCalls = 0) and (CapturedOpaquePixels > 0),
+        'unimplemented 3D vertical did not fall back to 2D vertical');
 
       // 大プリセットのボタンでローカル値と選択中オブジェクトを同時に更新する。
       FillChar(Edit, SizeOf(Edit), 0);
@@ -197,13 +227,13 @@ begin
       CapturedPresetLength := '';
       CapturedPresetThickness := '';
       CapturedPresetNoteThickness := '';
-      PFILTER_ITEM_SELECT(Items^[1])^.Value := 2;
-      PFILTER_ITEM_BUTTON(Items^[2])^.Callback(@Edit);
-      Check(PFILTER_ITEM_TRACK(Items^[11])^.Value = 180,
+      PFILTER_ITEM_SELECT(Items^[6])^.Value := 2;
+      PFILTER_ITEM_BUTTON(Items^[7])^.Callback(@Edit);
+      Check(PFILTER_ITEM_TRACK(Items^[15])^.Value = 180,
         'large preset local key length mismatch');
-      Check(PFILTER_ITEM_TRACK(Items^[12])^.Value = 60,
+      Check(PFILTER_ITEM_TRACK(Items^[16])^.Value = 60,
         'large preset local key thickness mismatch');
-      Check(PFILTER_ITEM_TRACK(Items^[13])^.Value = 80,
+      Check(PFILTER_ITEM_TRACK(Items^[17])^.Value = 80,
         'large preset local note thickness mismatch');
       Check((CapturedPresetLength = '180') and
         (CapturedPresetThickness = '60') and

@@ -21,6 +21,7 @@ uses
   SYNC_PianoRoll_HorizontalDisplay,
   SYNC_PianoRoll_MusicData,
   SYNC_PianoRoll_PianoKeys,
+  SYNC_PianoRoll_Perspective3DDisplay,
   SYNC_PianoRoll_Renderer,
   SYNC_PianoRoll_Time,
   SYNC_PianoRoll_VerticalDisplay;
@@ -33,11 +34,13 @@ var
   BeatLineColorItem: TFILTER_ITEM_COLOR;
   BeatsPerMeasureItem: TFILTER_ITEM_TRACK;
   BlackKeyColorItem: TFILTER_ITEM_COLOR;
+  BlackKey3DThicknessItem: TFILTER_ITEM_TRACK;
   BlackLaneColorItem: TFILTER_ITEM_COLOR;
   CenterNoteItem: TFILTER_ITEM_TRACK;
-  DisplayTypeItem: TFILTER_ITEM_SELECT;
-  DisplayTypeList: array[0..2] of TFILTER_ITEM_SELECT_ITEM;
+  DisplayCategoryItem: TFILTER_ITEM_SELECT;
+  DisplayCategoryList: array[0..1] of TFILTER_ITEM_SELECT_ITEM;
   DisplayTimeItem: TFILTER_ITEM_TRACK;
+  DisplayTime3DItem: TFILTER_ITEM_TRACK;
   GradientColor1Item: TFILTER_ITEM_COLOR;
   GradientColor2Item: TFILTER_ITEM_COLOR;
   HorizontalPianoRollDisplay: IPianoRollDisplay;
@@ -50,8 +53,15 @@ var
   NoteDepthItem: TFILTER_ITEM_SELECT;
   NoteDepthList: array[0..2] of TFILTER_ITEM_SELECT_ITEM;
   NoteThicknessItem: TFILTER_ITEM_TRACK;
+  Note3DThicknessItem: TFILTER_ITEM_TRACK;
   PitchFollowItem: TFILTER_ITEM_SELECT;
   PitchFollowList: array[0..3] of TFILTER_ITEM_SELECT_ITEM;
+  OrientationItem: TFILTER_ITEM_SELECT;
+  OrientationList: array[0..2] of TFILTER_ITEM_SELECT_ITEM;
+  RenderDimensionItem: TFILTER_ITEM_SELECT;
+  RenderDimensionList: array[0..2] of TFILTER_ITEM_SELECT_ITEM;
+  StyleTypeItem: TFILTER_ITEM_SELECT;
+  StyleTypeList: array[0..1] of TFILTER_ITEM_SELECT_ITEM;
   VerticalPianoRollDisplay: IPianoRollDisplay;
   ShowBeatLinesItem: TFILTER_ITEM_SELECT;
   ShowLanesItem: TFILTER_ITEM_SELECT;
@@ -67,8 +77,9 @@ var
   TrackColorModeList: array[0..15] of TFILTER_ITEM_SELECT_ITEM;
   VisibleNoteCountItem: TFILTER_ITEM_TRACK;
   WhiteKeyColorItem: TFILTER_ITEM_COLOR;
+  WhiteKey3DThicknessItem: TFILTER_ITEM_TRACK;
   WhiteLaneColorItem: TFILTER_ITEM_COLOR;
-  PluginItems: array[0..29] of Pointer;
+  PluginItems: array[0..36] of Pointer;
 
 function GetFilterColor(const Item: TFILTER_ITEM_COLOR;
   Alpha: Byte): TPianoRollColor;
@@ -154,6 +165,8 @@ procedure BuildDisplaySettings(out Settings: TPianoRollDisplaySettings);
 begin
   SetDefaultPianoRollDisplaySettings(Settings);
   Settings.DisplayTime := EnsureRange(DisplayTimeItem.Value, 0.1, 60.0);
+  Settings.DisplayTime3D := EnsureRange(
+    DisplayTime3DItem.Value, 0.1, 600.0);
   Settings.StrikePosition := EnsureRange(
     StrikePositionItem.Value / 100.0, 0.0, 1.0);
   Settings.TimeShift := EnsureRange(TimeShiftItem.Value, -60.0, 60.0);
@@ -179,6 +192,12 @@ begin
     KeyThicknessItem.Value, 1.0, 200.0);
   Settings.NoteThickness := EnsureRange(
     NoteThicknessItem.Value / 100.0, 0.05, 1.0);
+  Settings.WhiteKey3DThickness := EnsureRange(
+    WhiteKey3DThicknessItem.Value, 0.0, 500.0);
+  Settings.BlackKey3DThickness := EnsureRange(
+    BlackKey3DThicknessItem.Value, 0.0, 500.0);
+  Settings.Note3DThickness := EnsureRange(
+    Note3DThicknessItem.Value, 0.0, 500.0);
   Settings.NoteDepthEnabled := NoteDepthItem.Value <> 0;
   Settings.ShowLanes := ShowLanesItem.Value <> 0;
   Settings.ShowBeatLines := ShowBeatLinesItem.Value <> 0;
@@ -215,15 +234,24 @@ end;
 
 function ResolvePianoRollDisplay: IPianoRollDisplay;
 begin
-  // 未知の値も縦表示へ戻し、将来の表示タイプ追加時も安全に描画する。
-  case DisplayTypeItem.Value of
-    Ord(pdtHorizontal):
+  // 未知の値も縦表示へ戻し、将来の方向追加時も安全に描画する。
+  case OrientationItem.Value of
+    Ord(poHorizontal):
       Result := HorizontalPianoRollDisplay;
-    Ord(pdtVertical):
+    Ord(poVertical):
       Result := VerticalPianoRollDisplay;
   else
     Result := VerticalPianoRollDisplay;
   end;
+end;
+
+function UseImplementedPerspective3D: Boolean;
+begin
+  // 現在実装済みの3D Type1は横方向だけ。未実装の組み合わせは対応する2Dへ戻す。
+  Result := (DisplayCategoryItem.Value = Ord(pdcPiano)) and
+    (RenderDimensionItem.Value = Ord(prd3D)) and
+    (StyleTypeItem.Value = Ord(pstType1)) and
+    (OrientationItem.Value = Ord(poHorizontal));
 end;
 
 function PianoRollProcVideo(Video: PFILTER_PROC_VIDEO): Byte; cdecl;
@@ -242,8 +270,11 @@ begin
         if TryGetPianoRollMusicData(MusicFileName, MusicData) then
         begin
           BuildDisplaySettings(DisplaySettings);
-          RenderPianoRoll(Video, MusicData, TimeSeconds,
-            ResolvePianoRollDisplay, DisplaySettings);
+          if not UseImplementedPerspective3D or
+            not DrawPerspectivePianoRoll3D(Video, MusicData, TimeSeconds,
+              DisplaySettings) then
+            RenderPianoRoll(Video, MusicData, TimeSeconds,
+              ResolvePianoRollDisplay, DisplaySettings);
         end;
     end;
   except
@@ -284,6 +315,13 @@ begin
     DisplayTimeItem.S := 0.1;
     DisplayTimeItem.E := 60.0;
     DisplayTimeItem.Step := 0.1;
+
+    DisplayTime3DItem.ItemType := 'track';
+    DisplayTime3DItem.Name := '表示時間 3D (秒)';
+    DisplayTime3DItem.Value := 30.0;
+    DisplayTime3DItem.S := 0.1;
+    DisplayTime3DItem.E := 600.0;
+    DisplayTime3DItem.Step := 0.1;
 
     StrikePositionItem.ItemType := 'track';
     StrikePositionItem.Name := '発音位置 (%)';
@@ -347,6 +385,27 @@ begin
     NoteThicknessItem.S := 5;
     NoteThicknessItem.E := 100;
     NoteThicknessItem.Step := 1;
+
+    WhiteKey3DThicknessItem.ItemType := 'track';
+    WhiteKey3DThicknessItem.Name := '白鍵3D厚み';
+    WhiteKey3DThicknessItem.Value := 0;
+    WhiteKey3DThicknessItem.S := 0;
+    WhiteKey3DThicknessItem.E := 500;
+    WhiteKey3DThicknessItem.Step := 1;
+
+    BlackKey3DThicknessItem.ItemType := 'track';
+    BlackKey3DThicknessItem.Name := '黒鍵3D厚み';
+    BlackKey3DThicknessItem.Value := 0;
+    BlackKey3DThicknessItem.S := 0;
+    BlackKey3DThicknessItem.E := 500;
+    BlackKey3DThicknessItem.Step := 1;
+
+    Note3DThicknessItem.ItemType := 'track';
+    Note3DThicknessItem.Name := 'ノート3D厚み';
+    Note3DThicknessItem.Value := 0;
+    Note3DThicknessItem.S := 0;
+    Note3DThicknessItem.E := 500;
+    Note3DThicknessItem.Step := 1;
 
     NoteDepthList[0].Name := '平面';
     NoteDepthList[0].Value := 0;
@@ -441,16 +500,45 @@ begin
     InitializeColorItem(GradientColor2Item, 'グラデ色2',
       PianoRollColor(0, 0, 255, 255));
 
-    DisplayTypeList[0].Name := '縦';
-    DisplayTypeList[0].Value := Ord(pdtVertical);
-    DisplayTypeList[1].Name := '横';
-    DisplayTypeList[1].Value := Ord(pdtHorizontal);
-    DisplayTypeList[2].Name := nil;
-    DisplayTypeList[2].Value := 0;
-    DisplayTypeItem.ItemType := 'select';
-    DisplayTypeItem.Name := '表示タイプ';
-    DisplayTypeItem.Value := Ord(pdtVertical);
-    DisplayTypeItem.List := @DisplayTypeList[0];
+    DisplayCategoryList[0].Name := 'ピアノ';
+    DisplayCategoryList[0].Value := Ord(pdcPiano);
+    DisplayCategoryList[1].Name := nil;
+    DisplayCategoryList[1].Value := 0;
+    DisplayCategoryItem.ItemType := 'select';
+    DisplayCategoryItem.Name := '表示分類';
+    DisplayCategoryItem.Value := Ord(pdcPiano);
+    DisplayCategoryItem.List := @DisplayCategoryList[0];
+
+    RenderDimensionList[0].Name := '2D';
+    RenderDimensionList[0].Value := Ord(prd2D);
+    RenderDimensionList[1].Name := '3D';
+    RenderDimensionList[1].Value := Ord(prd3D);
+    RenderDimensionList[2].Name := nil;
+    RenderDimensionList[2].Value := 0;
+    RenderDimensionItem.ItemType := 'select';
+    RenderDimensionItem.Name := '描画方式';
+    RenderDimensionItem.Value := Ord(prd2D);
+    RenderDimensionItem.List := @RenderDimensionList[0];
+
+    StyleTypeList[0].Name := 'Type1';
+    StyleTypeList[0].Value := Ord(pstType1);
+    StyleTypeList[1].Name := nil;
+    StyleTypeList[1].Value := 0;
+    StyleTypeItem.ItemType := 'select';
+    StyleTypeItem.Name := '表示タイプ';
+    StyleTypeItem.Value := Ord(pstType1);
+    StyleTypeItem.List := @StyleTypeList[0];
+
+    OrientationList[0].Name := '縦';
+    OrientationList[0].Value := Ord(poVertical);
+    OrientationList[1].Name := '横';
+    OrientationList[1].Value := Ord(poHorizontal);
+    OrientationList[2].Name := nil;
+    OrientationList[2].Value := 0;
+    OrientationItem.ItemType := 'select';
+    OrientationItem.Name := '方向';
+    OrientationItem.Value := Ord(poVertical);
+    OrientationItem.List := @OrientationList[0];
 
     KeyboardTypeList[0].Name := '標準ピアノ';
     KeyboardTypeList[0].Value := Ord(pktPiano);
@@ -480,35 +568,42 @@ begin
     // AviUtl2はnil終端された項目ポインター配列を参照する。
     // 通常利用する基本設定を先頭へまとめ、以降に詳細設定を並べる。
     PluginItems[0] := @MusicFileItem;
-    PluginItems[1] := @SizePresetItem;
-    PluginItems[2] := @SizePresetButton;
-    PluginItems[3] := @DisplayTypeItem;
-    PluginItems[4] := @KeyboardTypeItem;
-    PluginItems[5] := @DisplayTimeItem;
-    PluginItems[6] := @StrikePositionItem;
-    PluginItems[7] := @TimeShiftItem;
-    PluginItems[8] := @VisibleNoteCountItem;
-    PluginItems[9] := @CenterNoteItem;
-    PluginItems[10] := @PitchFollowItem;
-    PluginItems[11] := @KeyLengthItem;
-    PluginItems[12] := @KeyThicknessItem;
-    PluginItems[13] := @NoteThicknessItem;
-    PluginItems[14] := @ShowLanesItem;
-    PluginItems[15] := @ShowBeatLinesItem;
-    PluginItems[16] := @BeatsPerMeasureItem;
-    PluginItems[17] := @WhiteKeyColorItem;
-    PluginItems[18] := @BlackKeyColorItem;
-    PluginItems[19] := @WhiteLaneColorItem;
-    PluginItems[20] := @BlackLaneColorItem;
-    PluginItems[21] := @BeatLineColorItem;
-    PluginItems[22] := @MeasureLineColorItem;
-    PluginItems[23] := @StrikeLineColorItem;
-    PluginItems[24] := @TrackColorModeItem;
-    PluginItems[25] := @SingleTrackColorItem;
-    PluginItems[26] := @NoteDepthItem;
-    PluginItems[27] := @GradientColor1Item;
-    PluginItems[28] := @GradientColor2Item;
-    PluginItems[29] := nil;
+    PluginItems[1] := @DisplayCategoryItem;
+    PluginItems[2] := @RenderDimensionItem;
+    PluginItems[3] := @StyleTypeItem;
+    PluginItems[4] := @OrientationItem;
+    PluginItems[5] := @KeyboardTypeItem;
+    PluginItems[6] := @SizePresetItem;
+    PluginItems[7] := @SizePresetButton;
+    PluginItems[8] := @DisplayTimeItem;
+    PluginItems[9] := @DisplayTime3DItem;
+    PluginItems[10] := @StrikePositionItem;
+    PluginItems[11] := @TimeShiftItem;
+    PluginItems[12] := @VisibleNoteCountItem;
+    PluginItems[13] := @CenterNoteItem;
+    PluginItems[14] := @PitchFollowItem;
+    PluginItems[15] := @KeyLengthItem;
+    PluginItems[16] := @KeyThicknessItem;
+    PluginItems[17] := @NoteThicknessItem;
+    PluginItems[18] := @WhiteKey3DThicknessItem;
+    PluginItems[19] := @BlackKey3DThicknessItem;
+    PluginItems[20] := @Note3DThicknessItem;
+    PluginItems[21] := @ShowLanesItem;
+    PluginItems[22] := @ShowBeatLinesItem;
+    PluginItems[23] := @BeatsPerMeasureItem;
+    PluginItems[24] := @WhiteKeyColorItem;
+    PluginItems[25] := @BlackKeyColorItem;
+    PluginItems[26] := @WhiteLaneColorItem;
+    PluginItems[27] := @BlackLaneColorItem;
+    PluginItems[28] := @BeatLineColorItem;
+    PluginItems[29] := @MeasureLineColorItem;
+    PluginItems[30] := @StrikeLineColorItem;
+    PluginItems[31] := @TrackColorModeItem;
+    PluginItems[32] := @SingleTrackColorItem;
+    PluginItems[33] := @NoteDepthItem;
+    PluginItems[34] := @GradientColor1Item;
+    PluginItems[35] := @GradientColor2Item;
+    PluginItems[36] := nil;
     Plugin.Items := @PluginItems[0];
   end;
   Result := @Plugin;
