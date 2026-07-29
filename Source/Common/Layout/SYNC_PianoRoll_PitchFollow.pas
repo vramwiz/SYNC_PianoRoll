@@ -6,19 +6,20 @@ interface
 
 uses
   SYNC_PianoRoll_DisplayTypes,
-  SYNC_PianoRoll_MusicData;
+  SYNC_PianoRoll_MusicData,
+  SYNC_PianoRoll_PianoKeys;
 
 procedure ResolveEffectivePianoRollPitchRange(
   const Data: IPianoRollMusicData; TimeSeconds, DisplayTime: Double;
   CenterNote, VisibleNoteCount: Integer;
   FollowMode: TPianoRollPitchFollowMode;
+  KeyboardType: TPianoRollKeyboardType;
   out LowestNote, HighestNote: Integer);
 
 implementation
 
 uses
-  System.Math,
-  SYNC_PianoRoll_PianoKeys;
+  System.Math;
 
 const
   NOTE_TIME_EPSILON = 1.0E-6;
@@ -49,7 +50,7 @@ begin
 end;
 
 function TryResolveFollowTarget(const Data: IPianoRollMusicData;
-  TimeSeconds, DisplayTime: Double;
+  TimeSeconds, DisplayTime: Double; KeyboardType: TPianoRollKeyboardType;
   out LowestNote, HighestNote: Integer): Boolean;
 var
   EarliestFuture: Double;
@@ -64,6 +65,8 @@ begin
   for I := 0 to Data.NoteCount - 1 do
   begin
     Note := Data.Notes[I];
+    if not IsPianoRollKeyVisible(Note.Key, KeyboardType) then
+      Continue;
     if (Note.StartSeconds <= TimeSeconds + NOTE_TIME_EPSILON) and
       (GetNoteEndSeconds(Note) >= TimeSeconds - NOTE_TIME_EPSILON) then
       IncludeNoteKey(Note.Key, Result, LowestNote, HighestNote);
@@ -77,7 +80,7 @@ begin
   for I := 0 to Data.NoteCount - 1 do
   begin
     Note := Data.Notes[I];
-    if (Note.Key < 0) or (Note.Key > 127) then
+    if not IsPianoRollKeyVisible(Note.Key, KeyboardType) then
       Continue;
     if (Note.StartSeconds >= TimeSeconds - NOTE_TIME_EPSILON) and
       (Note.StartSeconds <= TimeSeconds + DisplayTime + NOTE_TIME_EPSILON) then
@@ -89,6 +92,8 @@ begin
   for I := 0 to Data.NoteCount - 1 do
   begin
     Note := Data.Notes[I];
+    if not IsPianoRollKeyVisible(Note.Key, KeyboardType) then
+      Continue;
     if Abs(Note.StartSeconds - EarliestFuture) <= NOTE_TIME_EPSILON then
       IncludeNoteKey(Note.Key, Result, LowestNote, HighestNote);
   end;
@@ -98,6 +103,7 @@ procedure ResolveEffectivePianoRollPitchRange(
   const Data: IPianoRollMusicData; TimeSeconds, DisplayTime: Double;
   CenterNote, VisibleNoteCount: Integer;
   FollowMode: TPianoRollPitchFollowMode;
+  KeyboardType: TPianoRollKeyboardType;
   out LowestNote, HighestNote: Integer);
 var
   BaseHighest, BaseLowest: Integer;
@@ -110,7 +116,7 @@ begin
   LowestNote := BaseLowest;
   HighestNote := BaseHighest;
   if (FollowMode = ppfmNone) or
-    not TryResolveFollowTarget(Data, TimeSeconds, DisplayTime,
+    not TryResolveFollowTarget(Data, TimeSeconds, DisplayTime, KeyboardType,
       FollowLowest, FollowHighest) then
     Exit;
 

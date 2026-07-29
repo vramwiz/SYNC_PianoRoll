@@ -32,9 +32,9 @@ begin
     GetPianoKeyPitchCenter(60), 1.0), 'C to D position mismatch');
   Check(SameValue(GetPianoKeyPitchCenter(72) -
     GetPianoKeyPitchCenter(60), 7.0), 'octave position mismatch');
-  GetPianoRollNoteAxisBounds(640, 60, 60, 72, 40.0, 0.8, False,
+  GetPianoRollNoteAxisBounds(640, 60, 60, 72, pktPiano, 40.0, 0.8, False,
     WhiteStart, WhiteEnd);
-  GetPianoRollNoteAxisBounds(640, 61, 60, 72, 40.0, 0.8, False,
+  GetPianoRollNoteAxisBounds(640, 61, 60, 72, pktPiano, 40.0, 0.8, False,
     BlackStart, BlackEnd);
   Check((WhiteEnd - WhiteStart) = (BlackEnd - BlackStart),
     'white and black note widths must match');
@@ -42,9 +42,9 @@ begin
     'note width must use the common narrow pitch band');
   Check((BlackStart + BlackEnd) - (WhiteStart + WhiteEnd) = 40,
     'vertical notes must align with their key centers');
-  GetPianoRollNoteAxisBounds(240, 60, 60, 72, 20.0, 0.8, True,
+  GetPianoRollNoteAxisBounds(240, 60, 60, 72, pktPiano, 20.0, 0.8, True,
     ReverseWhiteStart, ReverseWhiteEnd);
-  GetPianoRollNoteAxisBounds(240, 61, 60, 72, 20.0, 0.8, True,
+  GetPianoRollNoteAxisBounds(240, 61, 60, 72, pktPiano, 20.0, 0.8, True,
     ReverseBlackStart, ReverseBlackEnd);
   Check((ReverseWhiteEnd - ReverseWhiteStart) =
     (ReverseBlackEnd - ReverseBlackStart),
@@ -54,6 +54,14 @@ begin
   Check((ReverseBlackStart + ReverseBlackEnd) -
     (ReverseWhiteStart + ReverseWhiteEnd) = -20,
     'horizontal notes must align with their reversed key centers');
+  Check(IsPianoRollKeyVisible(60, pktHarp7),
+    'harp must retain natural notes');
+  Check(not IsPianoRollKeyVisible(61, pktHarp7),
+    'harp must hide accidental notes');
+  GetPianoRollNoteAxisBounds(640, 60, 60, 72, pktHarp7, 40.0, 1.0,
+    False, WhiteStart, WhiteEnd);
+  Check((WhiteEnd - WhiteStart) = 40,
+    'harp keys must use equal full-width pitch bands');
   ResolvePianoRollPitchRange(66, 13, LowestNote, HighestNote);
   Check((LowestNote = 60) and (HighestNote = 72),
     'odd centered pitch range mismatch');

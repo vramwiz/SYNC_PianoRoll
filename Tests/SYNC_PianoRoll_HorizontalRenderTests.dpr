@@ -47,8 +47,10 @@ var
   CapturedNoteHighlight: Boolean;
   CapturedNoteRightOfStrike: Boolean;
   CapturedStrikeLine: Boolean;
+  CapturedTrackPixels: Integer;
   CapturedWhiteLane: Boolean;
   CapturedWidth: Integer;
+  MockNoteKey: Integer = 60;
 
 procedure Check(Condition: Boolean; const MessageText: string);
 begin
@@ -86,6 +88,7 @@ begin
   CapturedKeyboardDepth := False;
   CapturedNoteBorder := False;
   CapturedNoteHighlight := False;
+  CapturedTrackPixels := 0;
   // 320x240、発音位置75%では発音線がX=80、未来側が右になる。
   CapturedStrikeLine := Matches(80, 10, 255, 255, 255, 160);
   CapturedKeyboardLeftOfStrike := Matches(30, 190, 242, 242, 242, 255);
@@ -133,6 +136,9 @@ begin
     if (Pixel.R = 141) and (Pixel.G = 226) and (Pixel.B = 255) and
       (Pixel.A = 255) then
       CapturedNoteHighlight := True;
+    if (Pixel.R = 80) and (Pixel.G = 210) and (Pixel.B = 255) and
+      (Pixel.A = 255) then
+      Inc(CapturedTrackPixels);
   end;
 end;
 
@@ -158,7 +164,7 @@ begin
   FillChar(Result, SizeOf(Result), 0);
   Result.StartSeconds := 0.5;
   Result.EndSeconds := 1.0;
-  Result.Key := 60;
+  Result.Key := MockNoteKey;
   Result.Velocity := 100;
   Result.TrackIndex := 1;
 end;
@@ -272,6 +278,16 @@ begin
       'inactive horizontal render failed');
     Check(not CapturedActiveKey and not CapturedGlow,
       'horizontal strike highlight remained after note end');
+
+    // 横表示でもハープの半音ノートは流れるノートと打鍵表示へ現れない。
+    MockNoteKey := 61;
+    Settings.KeyboardType := pktHarp7;
+    Check(RenderPianoRoll(@Video, Data, 0.5, Display, Settings),
+      'horizontal harp accidental render failed');
+    Check((CapturedTrackPixels = 0) and not CapturedActiveKey and
+      not CapturedGlow, 'horizontal harp rendered an accidental note');
+    Check(not CapturedBlackKey and not CapturedBlackLane,
+      'horizontal harp retained black keys or accidental lanes');
     Writeln('PASS');
   finally
     Display := nil;

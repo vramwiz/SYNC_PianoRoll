@@ -4,10 +4,20 @@
 
 interface
 
+type
+  // 音階方向へ配置する鍵盤構造。表示方向や配色とは独立して扱う。
+  TPianoRollKeyboardType = (
+    pktPiano,
+    pktHarp7
+  );
+
 function IsPianoBlackKey(MidiKey: Integer): Boolean;
+function IsPianoRollKeyVisible(MidiKey: Integer;
+  KeyboardType: TPianoRollKeyboardType): Boolean;
 function GetPianoKeyPitchCenter(MidiKey: Integer): Double;
 procedure GetPianoRollNoteAxisBounds(AxisLength, MidiKey, LowestKey,
-  HighestKey: Integer; KeyThickness, NoteThickness: Double;
+  HighestKey: Integer; KeyboardType: TPianoRollKeyboardType;
+  KeyThickness, NoteThickness: Double;
   ReversePitchAxis: Boolean; out StartPosition, EndPosition: Integer);
 procedure ResolvePianoRollPitchRange(CenterNote, VisibleNoteCount: Integer;
   out LowestNote, HighestNote: Integer);
@@ -36,6 +46,13 @@ begin
   Result := PitchClass in [1, 3, 6, 8, 10];
 end;
 
+function IsPianoRollKeyVisible(MidiKey: Integer;
+  KeyboardType: TPianoRollKeyboardType): Boolean;
+begin
+  Result := (MidiKey >= 0) and (MidiKey <= 127) and
+    ((KeyboardType <> pktHarp7) or not IsPianoBlackKey(MidiKey));
+end;
+
 function GetPianoKeyPitchCenter(MidiKey: Integer): Double;
 var
   OctaveIndex, PitchClass: Integer;
@@ -51,10 +68,11 @@ begin
 end;
 
 procedure GetPianoRollNoteAxisBounds(AxisLength, MidiKey, LowestKey,
-  HighestKey: Integer; KeyThickness, NoteThickness: Double;
+  HighestKey: Integer; KeyboardType: TPianoRollKeyboardType;
+  KeyThickness, NoteThickness: Double;
   ReversePitchAxis: Boolean; out StartPosition, EndPosition: Integer);
 var
-  AxisCenter, Direction, RangeCenter: Double;
+  AxisCenter, BandRatio, Direction, RangeCenter: Double;
   NoteWidth: Integer;
 begin
   KeyThickness := Max(1.0, KeyThickness);
@@ -68,9 +86,12 @@ begin
   AxisCenter := AxisLength * 0.5 + Direction *
     (GetPianoKeyPitchCenter(MidiKey) - RangeCenter) * KeyThickness;
 
-  // 背景レーンとノートは鍵盤の白黒によらず同じ基準幅を使用する。
-  NoteWidth := Max(1, Round(KeyThickness * UNIFORM_PITCH_BAND_RATIO *
-    NoteThickness));
+  if KeyboardType = pktHarp7 then
+    BandRatio := 1.0
+  else
+    BandRatio := UNIFORM_PITCH_BAND_RATIO;
+  // ピアノは黒鍵相当、ハープは隣接する自然音へ連続する共通幅を使う。
+  NoteWidth := Max(1, Round(KeyThickness * BandRatio * NoteThickness));
   StartPosition := Round(AxisCenter - NoteWidth * 0.5);
   EndPosition := StartPosition + NoteWidth;
 end;

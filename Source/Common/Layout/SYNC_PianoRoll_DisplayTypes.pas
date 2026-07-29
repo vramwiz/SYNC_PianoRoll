@@ -6,6 +6,7 @@ interface
 
 uses
   SYNC_PianoRoll_MusicData,
+  SYNC_PianoRoll_PianoKeys,
   SYNC_PianoRoll_Colors,
   SYNC_PianoRoll_RGBA;
 
@@ -30,6 +31,7 @@ type
     VisibleNoteCount: Integer; // 基準音域へ含める連続MIDIノート数。
     CenterNote: Integer;       // 基準音域の中央に置くMIDIノート番号。
     PitchFollowMode: TPianoRollPitchFollowMode; // 実効音域の追従方式。
+    KeyboardType: TPianoRollKeyboardType; // 鍵盤と表示対象音の構造。
     KeyLength: Double;        // 鍵盤が伸びる方向の長さ。
     KeyThickness: Double;     // 1鍵の音階方向の太さ。
     NoteThickness: Double;    // 音階方向レーンに対するノートの占有率。
@@ -79,6 +81,7 @@ begin
   Settings.VisibleNoteCount := 64;
   Settings.CenterNote := 64;
   Settings.PitchFollowMode := ppfmNone;
+  Settings.KeyboardType := pktPiano;
   // 現在の中プリセットを描画設定の初期寸法として使う。
   Settings.KeyLength := 120.0;
   Settings.KeyThickness := 40.0;

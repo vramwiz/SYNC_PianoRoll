@@ -50,6 +50,7 @@ var
   CapturedWhiteKeyPixels: Integer;
   CapturedWhiteLanePixels: Integer;
   CapturedWidth: Integer;
+  MockNoteKey: Integer = 60;
 
 procedure Check(Condition: Boolean; const MessageText: string);
 begin
@@ -212,7 +213,7 @@ begin
   FillChar(Result, SizeOf(Result), 0);
   Result.StartSeconds := 0.0;
   Result.EndSeconds := 0.5;
-  Result.Key := 60;
+  Result.Key := MockNoteKey;
   Result.Velocity := 100;
   Result.TrackIndex := 1;
 end;
@@ -361,6 +362,17 @@ begin
       'resize render failed');
     Check((CapturedWidth = 320) and (CapturedHeight = 180),
       'resized output mismatch');
+
+    // ハープ表示は半音ノートをレーン、鍵盤点灯、発光を含めて描画しない。
+    MockNoteKey := 61;
+    Settings.KeyboardType := pktHarp7;
+    Check(RenderPianoRoll(@Video, Data, 0.40, Display, Settings),
+      'harp accidental render failed');
+    Check((CapturedSingleTrackPixels = 0) and
+      (CapturedActiveKeyPixels = 0) and (CapturedGlowPixels = 0),
+      'harp rendered an accidental note');
+    Check((CapturedBlackKeyPixels = 0) and (CapturedBlackLanePixels = 0),
+      'harp retained black keys or accidental lanes');
     Writeln('PASS');
   finally
     Display := nil;

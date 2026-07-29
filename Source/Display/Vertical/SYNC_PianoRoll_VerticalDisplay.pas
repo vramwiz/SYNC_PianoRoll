@@ -182,6 +182,7 @@ begin
     Note := Data.Notes[I];
     if not IsNoteActiveAtTime(Note, TimeSeconds) or
       (Note.Key < LowestKey) or (Note.Key > HighestKey) or
+      not IsPianoRollKeyVisible(Note.Key, Settings.KeyboardType) or
       IsPianoBlackKey(Note.Key) then
       Continue;
     Color := ResolvePianoRollTrackColor(Note.TrackIndex, Note.Key,
@@ -196,7 +197,8 @@ begin
 
   // 白鍵の点灯で覆われた隣接黒鍵を復元する。
   for Key := LowestKey to HighestKey do
-    if IsPianoBlackKey(Key) then
+    if IsPianoRollKeyVisible(Key, Settings.KeyboardType) and
+      IsPianoBlackKey(Key) then
     begin
       GetKeyAxisBounds(Canvas.Width, Key, LowestKey, HighestKey,
         Settings.KeyThickness, StartPosition, EndPosition);
@@ -211,6 +213,7 @@ begin
     Note := Data.Notes[I];
     if not IsNoteActiveAtTime(Note, TimeSeconds) or
       (Note.Key < LowestKey) or (Note.Key > HighestKey) or
+      not IsPianoRollKeyVisible(Note.Key, Settings.KeyboardType) or
       not IsPianoBlackKey(Note.Key) then
       Continue;
     Color := ResolvePianoRollTrackColor(Note.TrackIndex, Note.Key,
@@ -239,7 +242,8 @@ begin
   begin
     Note := Data.Notes[I];
     if not IsNoteActiveAtTime(Note, TimeSeconds) or
-      (Note.Key < LowestKey) or (Note.Key > HighestKey) then
+      (Note.Key < LowestKey) or (Note.Key > HighestKey) or
+      not IsPianoRollKeyVisible(Note.Key, Settings.KeyboardType) then
       Continue;
     Elapsed := TimeSeconds - Note.StartSeconds;
     if (Elapsed < 0.0) or (Elapsed >= STRIKE_GLOW_DURATION) then
@@ -328,19 +332,23 @@ begin
 
   // 背景レーンは鍵盤の白黒によらず同じ幅とし、各鍵盤の中心へ揃える。
   for Key := LowestKey to HighestKey do
-    if not IsPianoBlackKey(Key) then
+    if IsPianoRollKeyVisible(Key, Settings.KeyboardType) and
+      not IsPianoBlackKey(Key) then
     begin
       GetPianoRollNoteAxisBounds(Canvas.Width, Key, LowestKey, HighestKey,
-        Settings.KeyThickness, 1.0, False, StartPosition, EndPosition);
+        Settings.KeyboardType, Settings.KeyThickness, 1.0, False,
+        StartPosition, EndPosition);
       Canvas.FillRectangle(StartPosition, 0, EndPosition, StrikePosition,
         Settings.Palette.WhiteLane);
     end;
 
   for Key := LowestKey to HighestKey do
-    if IsPianoBlackKey(Key) then
+    if IsPianoRollKeyVisible(Key, Settings.KeyboardType) and
+      IsPianoBlackKey(Key) then
     begin
       GetPianoRollNoteAxisBounds(Canvas.Width, Key, LowestKey, HighestKey,
-        Settings.KeyThickness, 1.0, False, StartPosition, EndPosition);
+        Settings.KeyboardType, Settings.KeyThickness, 1.0, False,
+        StartPosition, EndPosition);
       Canvas.FillRectangle(StartPosition, 0, EndPosition, StrikePosition,
         Settings.Palette.BlackLane);
     end;
@@ -360,7 +368,8 @@ begin
 
   // 白鍵を先に並べ、浅い面取りと縦方向の反射を付ける。
   for Key := LowestKey to HighestKey do
-    if not IsPianoBlackKey(Key) then
+    if IsPianoRollKeyVisible(Key, Settings.KeyboardType) and
+      not IsPianoBlackKey(Key) then
     begin
       GetKeyAxisBounds(Canvas.Width, Key, LowestKey, HighestKey,
         Settings.KeyThickness, StartPosition, EndPosition);
@@ -370,7 +379,8 @@ begin
 
   // 黒鍵は白鍵の上へ重ねる。
   for Key := LowestKey to HighestKey do
-    if IsPianoBlackKey(Key) then
+    if IsPianoRollKeyVisible(Key, Settings.KeyboardType) and
+      IsPianoBlackKey(Key) then
     begin
       GetKeyAxisBounds(Canvas.Width, Key, LowestKey, HighestKey,
         Settings.KeyThickness, StartPosition, EndPosition);
@@ -397,7 +407,7 @@ begin
   TimeSeconds := TimeSeconds - Settings.TimeShift;
   ResolveEffectivePianoRollPitchRange(Data, TimeSeconds,
     Settings.DisplayTime, Settings.CenterNote, Settings.VisibleNoteCount,
-    Settings.PitchFollowMode, LowestKey, HighestKey);
+    Settings.PitchFollowMode, Settings.KeyboardType, LowestKey, HighestKey);
   GetPianoRollNoteRanges(Data, MinTrack, MaxTrack, MinMusicKey, MaxMusicKey);
   StrikePosition := EnsureRange(
     Round(Canvas.Height * Settings.StrikePosition), 0, Canvas.Height - 1);
@@ -423,7 +433,8 @@ begin
   for I := 0 to Data.NoteCount - 1 do
   begin
     Note := Data.Notes[I];
-    if (Note.Key < LowestKey) or (Note.Key > HighestKey) then
+    if (Note.Key < LowestKey) or (Note.Key > HighestKey) or
+      not IsPianoRollKeyVisible(Note.Key, Settings.KeyboardType) then
       Continue;
     EndSeconds := Note.EndSeconds;
     if EndSeconds < Note.StartSeconds then
@@ -441,7 +452,8 @@ begin
       Continue;
 
     GetPianoRollNoteAxisBounds(Canvas.Width, Note.Key, LowestKey, HighestKey,
-      Settings.KeyThickness, Settings.NoteThickness, False,
+      Settings.KeyboardType, Settings.KeyThickness, Settings.NoteThickness,
+      False,
       NoteLeft, NoteRight);
     DrawNote(Canvas, NoteLeft, TopPosition, Max(NoteLeft + 1, NoteRight),
       BottomPosition, ResolvePianoRollTrackColor(Note.TrackIndex, Note.Key,

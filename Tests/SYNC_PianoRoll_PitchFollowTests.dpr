@@ -38,7 +38,7 @@ var
   Highest, Lowest: Integer;
 begin
   ResolveEffectivePianoRollPitchRange(Data, TimeSeconds, DisplayTime,
-    CenterNote, VisibleNoteCount, FollowMode, Lowest, Highest);
+    CenterNote, VisibleNoteCount, FollowMode, pktPiano, Lowest, Highest);
   if (Lowest <> ExpectedLowest) or (Highest <> ExpectedHighest) then
     raise Exception.CreateFmt('%s: expected %d..%d, got %d..%d',
       [MessageText, ExpectedLowest, ExpectedHighest, Lowest, Highest]);
@@ -102,8 +102,11 @@ begin
 end;
 
 var
-  ActiveChord, FutureChord, HighNote, LowNote: IPianoRollMusicData;
+  AccidentalNote, ActiveChord, FutureChord, HighNote,
+  LowNote: IPianoRollMusicData;
+  Highest, Lowest: Integer;
 begin
+  AccidentalNote := TMockMusicData.Create([121], [0.0], [2.0]);
   ActiveChord := TMockMusicData.Create([36, 48], [0.0, 0.0], [2.0, 2.0]);
   FutureChord := TMockMusicData.Create([84, 88, 40],
     [2.0, 2.0, 4.0], [3.0, 3.0, 5.0]);
@@ -124,6 +127,10 @@ begin
     58, 69, 'distant future notes do not move the base range');
   CheckRange(HighNote, 1.0, 4.0, 64, 20, ppfmAlways,
     108, 127, 'upper MIDI edge keeps the requested width');
+  ResolveEffectivePianoRollPitchRange(AccidentalNote, 1.0, 4.0,
+    64, 12, ppfmAlways, pktHarp7, Lowest, Highest);
+  if (Lowest <> 58) or (Highest <> 69) then
+    raise Exception.Create('harp follow must ignore accidental notes');
 
   Writeln('PASS');
 end.

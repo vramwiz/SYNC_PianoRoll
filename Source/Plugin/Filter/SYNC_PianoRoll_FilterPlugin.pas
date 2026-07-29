@@ -20,6 +20,7 @@ uses
   SYNC_PianoRoll_DisplayTypes,
   SYNC_PianoRoll_HorizontalDisplay,
   SYNC_PianoRoll_MusicData,
+  SYNC_PianoRoll_PianoKeys,
   SYNC_PianoRoll_Renderer,
   SYNC_PianoRoll_Time,
   SYNC_PianoRoll_VerticalDisplay;
@@ -42,6 +43,8 @@ var
   HorizontalPianoRollDisplay: IPianoRollDisplay;
   KeyLengthItem: TFILTER_ITEM_TRACK;
   KeyThicknessItem: TFILTER_ITEM_TRACK;
+  KeyboardTypeItem: TFILTER_ITEM_SELECT;
+  KeyboardTypeList: array[0..2] of TFILTER_ITEM_SELECT_ITEM;
   MeasureLineColorItem: TFILTER_ITEM_COLOR;
   MusicFileItem: TFILTER_ITEM_FILE;
   NoteDepthItem: TFILTER_ITEM_SELECT;
@@ -65,7 +68,7 @@ var
   VisibleNoteCountItem: TFILTER_ITEM_TRACK;
   WhiteKeyColorItem: TFILTER_ITEM_COLOR;
   WhiteLaneColorItem: TFILTER_ITEM_COLOR;
-  PluginItems: array[0..28] of Pointer;
+  PluginItems: array[0..29] of Pointer;
 
 function GetFilterColor(const Item: TFILTER_ITEM_COLOR;
   Alpha: Byte): TPianoRollColor;
@@ -166,6 +169,11 @@ begin
     // 未知値は基準音域を変えない既定動作へ戻す。
     Settings.PitchFollowMode := ppfmNone;
   end;
+  if KeyboardTypeItem.Value = Ord(pktHarp7) then
+    Settings.KeyboardType := pktHarp7
+  else
+    // 未知値は半音を欠落させない標準ピアノへ戻す。
+    Settings.KeyboardType := pktPiano;
   Settings.KeyLength := EnsureRange(KeyLengthItem.Value, 0.0, 1000.0);
   Settings.KeyThickness := EnsureRange(
     KeyThicknessItem.Value, 1.0, 200.0);
@@ -444,6 +452,17 @@ begin
     DisplayTypeItem.Value := Ord(pdtVertical);
     DisplayTypeItem.List := @DisplayTypeList[0];
 
+    KeyboardTypeList[0].Name := '標準ピアノ';
+    KeyboardTypeList[0].Value := Ord(pktPiano);
+    KeyboardTypeList[1].Name := 'ハープ（7音）';
+    KeyboardTypeList[1].Value := Ord(pktHarp7);
+    KeyboardTypeList[2].Name := nil;
+    KeyboardTypeList[2].Value := 0;
+    KeyboardTypeItem.ItemType := 'select';
+    KeyboardTypeItem.Name := '鍵盤タイプ';
+    KeyboardTypeItem.Value := Ord(pktPiano);
+    KeyboardTypeItem.List := @KeyboardTypeList[0];
+
     SizePresetList[0].Name := '中';
     SizePresetList[0].Value := SIZE_PRESET_MEDIUM;
     SizePresetList[1].Name := '大';
@@ -464,31 +483,32 @@ begin
     PluginItems[1] := @SizePresetItem;
     PluginItems[2] := @SizePresetButton;
     PluginItems[3] := @DisplayTypeItem;
-    PluginItems[4] := @DisplayTimeItem;
-    PluginItems[5] := @StrikePositionItem;
-    PluginItems[6] := @TimeShiftItem;
-    PluginItems[7] := @VisibleNoteCountItem;
-    PluginItems[8] := @CenterNoteItem;
-    PluginItems[9] := @PitchFollowItem;
-    PluginItems[10] := @KeyLengthItem;
-    PluginItems[11] := @KeyThicknessItem;
-    PluginItems[12] := @NoteThicknessItem;
-    PluginItems[13] := @ShowLanesItem;
-    PluginItems[14] := @ShowBeatLinesItem;
-    PluginItems[15] := @BeatsPerMeasureItem;
-    PluginItems[16] := @WhiteKeyColorItem;
-    PluginItems[17] := @BlackKeyColorItem;
-    PluginItems[18] := @WhiteLaneColorItem;
-    PluginItems[19] := @BlackLaneColorItem;
-    PluginItems[20] := @BeatLineColorItem;
-    PluginItems[21] := @MeasureLineColorItem;
-    PluginItems[22] := @StrikeLineColorItem;
-    PluginItems[23] := @TrackColorModeItem;
-    PluginItems[24] := @SingleTrackColorItem;
-    PluginItems[25] := @NoteDepthItem;
-    PluginItems[26] := @GradientColor1Item;
-    PluginItems[27] := @GradientColor2Item;
-    PluginItems[28] := nil;
+    PluginItems[4] := @KeyboardTypeItem;
+    PluginItems[5] := @DisplayTimeItem;
+    PluginItems[6] := @StrikePositionItem;
+    PluginItems[7] := @TimeShiftItem;
+    PluginItems[8] := @VisibleNoteCountItem;
+    PluginItems[9] := @CenterNoteItem;
+    PluginItems[10] := @PitchFollowItem;
+    PluginItems[11] := @KeyLengthItem;
+    PluginItems[12] := @KeyThicknessItem;
+    PluginItems[13] := @NoteThicknessItem;
+    PluginItems[14] := @ShowLanesItem;
+    PluginItems[15] := @ShowBeatLinesItem;
+    PluginItems[16] := @BeatsPerMeasureItem;
+    PluginItems[17] := @WhiteKeyColorItem;
+    PluginItems[18] := @BlackKeyColorItem;
+    PluginItems[19] := @WhiteLaneColorItem;
+    PluginItems[20] := @BlackLaneColorItem;
+    PluginItems[21] := @BeatLineColorItem;
+    PluginItems[22] := @MeasureLineColorItem;
+    PluginItems[23] := @StrikeLineColorItem;
+    PluginItems[24] := @TrackColorModeItem;
+    PluginItems[25] := @SingleTrackColorItem;
+    PluginItems[26] := @NoteDepthItem;
+    PluginItems[27] := @GradientColor1Item;
+    PluginItems[28] := @GradientColor2Item;
+    PluginItems[29] := nil;
     Plugin.Items := @PluginItems[0];
   end;
   Result := @Plugin;
