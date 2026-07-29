@@ -44,7 +44,10 @@ var
   CapturedNoteYRange: Single;
   CapturedNoteZRange: Single;
   CapturedTranslucentVertexCount: Integer;
+  CapturedConnectorMaxX, CapturedConnectorMinX: Single;
   CapturedVertexCount, CapturedVertexType: Integer;
+  FirstActiveKeyQuad, LastActiveKeyQuad, LastBlackKeyQuad: Integer;
+  CapturedWhiteTopMinXRange, CapturedWhiteTopMinYRange: Single;
   CapturedWhiteMaxX, CapturedWhiteMinX: Single;
   CapturedWhiteMaxY, CapturedWhiteMinY: Single;
   CapturedWhiteMaxZ, CapturedWhiteMinZ: Single;
@@ -58,7 +61,10 @@ end;
 function CapturePoly(VertexType: Integer; VertexList: Pointer;
   VertexNum: Integer; Resource: PWideChar): Byte; cdecl;
 var
-  I: Integer;
+  I, J: Integer;
+  IsActiveKeyQuad, IsBlackKeyQuad, IsConnectorQuad,
+  IsWhiteKeyQuad: Boolean;
+  MaxQuadX, MaxQuadY, MaxQuadZ, MinQuadX, MinQuadY, MinQuadZ: Single;
   MaxNoteX, MaxNoteY, MaxNoteZ, MinNoteX, MinNoteY, MinNoteZ: Single;
   Vertex: TVERTEX_COLOR;
 begin
@@ -67,6 +73,13 @@ begin
   CapturedNoteVertexCount := 0;
   CapturedOpaqueNoteVertexCount := 0;
   CapturedTranslucentVertexCount := 0;
+  CapturedConnectorMinX := MaxSingle;
+  CapturedConnectorMaxX := -MaxSingle;
+  FirstActiveKeyQuad := -1;
+  LastActiveKeyQuad := -1;
+  LastBlackKeyQuad := -1;
+  CapturedWhiteTopMinXRange := MaxSingle;
+  CapturedWhiteTopMinYRange := MaxSingle;
   MinNoteX := MaxSingle;
   MaxNoteX := -MaxSingle;
   MinNoteY := MaxSingle;
@@ -125,6 +138,67 @@ begin
       CapturedBlackMaxY := Max(CapturedBlackMaxY, Vertex.Y);
       CapturedBlackMinZ := Min(CapturedBlackMinZ, Vertex.Z);
       CapturedBlackMaxZ := Max(CapturedBlackMaxZ, Vertex.Z);
+    end;
+  end;
+  for I := 0 to VertexNum div 4 - 1 do
+  begin
+    IsActiveKeyQuad := True;
+    IsBlackKeyQuad := True;
+    IsConnectorQuad := True;
+    IsWhiteKeyQuad := True;
+    MinQuadX := MaxSingle;
+    MaxQuadX := -MaxSingle;
+    MinQuadY := MaxSingle;
+    MaxQuadY := -MaxSingle;
+    MinQuadZ := MaxSingle;
+    MaxQuadZ := -MaxSingle;
+    for J := 0 to 3 do
+    begin
+      Vertex := PVertexArray(VertexList)^[I * 4 + J];
+      MinQuadX := Min(MinQuadX, Vertex.X);
+      MaxQuadX := Max(MaxQuadX, Vertex.X);
+      MinQuadY := Min(MinQuadY, Vertex.Y);
+      MaxQuadY := Max(MaxQuadY, Vertex.Y);
+      MinQuadZ := Min(MinQuadZ, Vertex.Z);
+      MaxQuadZ := Max(MaxQuadZ, Vertex.Z);
+      IsActiveKeyQuad := IsActiveKeyQuad and
+        (Abs(Vertex.R - 7 / 255.0) < 0.0001) and
+        (Abs(Vertex.G - 8 / 255.0) < 0.0001) and
+        (Abs(Vertex.B - 9 / 255.0) < 0.0001) and
+        (Vertex.A >= 0.9999) and (Abs(Vertex.Z + 4.0) < 0.001);
+      IsBlackKeyQuad := IsBlackKeyQuad and
+        (Abs(Vertex.R - 24 / 255.0) < 0.0001) and
+        (Abs(Vertex.G - 24 / 255.0) < 0.0001) and
+        (Abs(Vertex.B - 24 / 255.0) < 0.0001) and
+        (Vertex.A >= 0.9999) and (Abs(Vertex.Z + 4.0) < 0.001);
+      IsWhiteKeyQuad := IsWhiteKeyQuad and
+        (Abs(Vertex.R - 242 / 255.0) < 0.0001) and
+        (Abs(Vertex.G - 242 / 255.0) < 0.0001) and
+        (Abs(Vertex.B - 242 / 255.0) < 0.0001) and
+        (Vertex.A >= 0.9999) and (Abs(Vertex.Z + 4.0) < 0.001);
+      IsConnectorQuad := IsConnectorQuad and
+        (Abs(Vertex.A - 140 / 255.0) < 0.0001);
+    end;
+    if IsActiveKeyQuad then
+    begin
+      if FirstActiveKeyQuad < 0 then
+        FirstActiveKeyQuad := I;
+      LastActiveKeyQuad := I;
+    end;
+    if IsBlackKeyQuad then
+      LastBlackKeyQuad := I;
+    if IsWhiteKeyQuad then
+    begin
+      CapturedWhiteTopMinXRange := Min(CapturedWhiteTopMinXRange,
+        MaxQuadX - MinQuadX);
+      CapturedWhiteTopMinYRange := Min(CapturedWhiteTopMinYRange,
+        MaxQuadY - MinQuadY);
+    end;
+    if IsConnectorQuad and (MaxQuadX - MinQuadX < 0.001) and
+      (MaxQuadZ - MinQuadZ > 1.0) then
+    begin
+      CapturedConnectorMinX := Min(CapturedConnectorMinX, MinQuadX);
+      CapturedConnectorMaxX := Max(CapturedConnectorMaxX, MaxQuadX);
     end;
   end;
   CapturedNoteXRange := MaxNoteX - MinNoteX;
@@ -235,6 +309,8 @@ begin
     'white keys do not extend below the strike Y');
   Check(CapturedBlackMaxY > CapturedBlackMinY,
     'black keys have no length');
+  Check(Abs(CapturedWhiteTopMinXRange - 38.0) < 0.001,
+    'vertical white key gap is not size-scaled');
   Check(Abs(CapturedWhiteMinZ - CapturedBlackMinZ) < 0.001,
     'flat white and black key surfaces are separated');
   Check((AnchorWidth = 640) and (AnchorHeight = 360),
@@ -255,8 +331,8 @@ begin
   Settings.WhiteKey3DThickness := 10;
   Check(DrawVerticalPianoRoll3D(@Video, Data, 0.0, Settings),
     'white key extrusion failed');
-  Check(CapturedVertexCount = StandardVertexCount + 3 * 4,
-    'connected white keyboard outer faces mismatch');
+  Check(CapturedVertexCount = StandardVertexCount + 2 * 4,
+    'connected white keyboard end faces mismatch');
   Check((Abs(CapturedWhiteMinZ - BaselineWhiteTopZ) < 0.001) and
     (Abs(CapturedBlackMinZ - BaselineBlackTopZ) < 0.001),
     'white thickness moved the white or black top surface');
@@ -265,7 +341,7 @@ begin
   Settings.BlackKey3DThickness := 20;
   Check(DrawVerticalPianoRoll3D(@Video, Data, 0.0, Settings),
     'black key extrusion failed');
-  Check(CapturedVertexCount = WhiteThicknessVertexCount + 5 * 12,
+  Check(CapturedVertexCount = WhiteThicknessVertexCount + 5 * 16,
     'black key side faces mismatch');
   Check((Abs(CapturedWhiteMinZ - BaselineWhiteTopZ) < 0.001) and
     (CapturedBlackMinZ < BaselineBlackTopZ - 1.0),
@@ -275,7 +351,7 @@ begin
   Check(DrawVerticalPianoRoll3D(@Video, Data, 0.0, Settings),
     'note extrusion failed');
   Check(CapturedVertexCount =
-    WhiteThicknessVertexCount + 5 * 12 + 2 * 12,
+    WhiteThicknessVertexCount + 5 * 16 + 2 * 16,
     'note side faces mismatch');
 
   Settings.WhiteKey3DThickness := 0;
@@ -300,6 +376,8 @@ begin
   Check((CapturedBlackMinX >= CapturedWhiteMinX - 0.001) and
     (CapturedBlackMaxX < CapturedWhiteMaxX),
     'horizontal black keys are not placed within the white key X range');
+  Check(Abs(CapturedWhiteTopMinYRange - 38.0) < 0.001,
+    'horizontal white key gap is not size-scaled');
   HorizontalStandardVertexCount := CapturedVertexCount;
   HorizontalWhiteTopZ := CapturedWhiteMinZ;
   HorizontalBlackTopZ := CapturedBlackMinZ;
@@ -307,8 +385,8 @@ begin
   Settings.WhiteKey3DThickness := 10;
   Check(DrawHorizontalPianoRoll3D(@Video, Data, 0.0, Settings),
     'horizontal white key extrusion failed');
-  Check(CapturedVertexCount = HorizontalStandardVertexCount + 3 * 4,
-    'horizontal connected white keyboard outer faces mismatch');
+  Check(CapturedVertexCount = HorizontalStandardVertexCount + 2 * 4,
+    'horizontal connected white keyboard end faces mismatch');
   Check((Abs(CapturedWhiteMinZ - HorizontalWhiteTopZ) < 0.001) and
     (Abs(CapturedBlackMinZ - HorizontalBlackTopZ) < 0.001),
     'horizontal white thickness moved a key top surface');
@@ -318,7 +396,7 @@ begin
   Check(DrawHorizontalPianoRoll3D(@Video, Data, 0.0, Settings),
     'horizontal black key extrusion failed');
   Check(CapturedVertexCount =
-    HorizontalWhiteThicknessVertexCount + 5 * 12,
+    HorizontalWhiteThicknessVertexCount + 5 * 16,
     'horizontal black key side faces mismatch');
   Check(CapturedBlackMinZ < HorizontalBlackTopZ - 1.0,
     'horizontal black thickness did not rise from the white top surface');
@@ -327,7 +405,7 @@ begin
   Check(DrawHorizontalPianoRoll3D(@Video, Data, 0.0, Settings),
     'horizontal note extrusion failed');
   Check(CapturedVertexCount =
-    HorizontalWhiteThicknessVertexCount + 5 * 12 + 2 * 12,
+    HorizontalWhiteThicknessVertexCount + 5 * 16 + 2 * 16,
     'horizontal note side faces mismatch');
 
   Settings.WhiteKey3DThickness := 0;
@@ -337,6 +415,11 @@ begin
     'vertical active key after glow draw failed');
   Check(CapturedOpaqueNoteVertexCount >= 16,
     'vertical active keys did not remain lit');
+  Check((FirstActiveKeyQuad >= 0) and
+    (FirstActiveKeyQuad < LastBlackKeyQuad) and
+    (LastBlackKeyQuad < LastActiveKeyQuad),
+    Format('vertical active white key order mismatch: %d, %d, %d',
+      [FirstActiveKeyQuad, LastBlackKeyQuad, LastActiveKeyQuad]));
   VerticalBaseTranslucentVertexCount := CapturedTranslucentVertexCount;
   Check(DrawVerticalPianoRoll3D(@Video, Data, 0.5, Settings),
     'vertical active key and glow draw failed');
@@ -350,6 +433,11 @@ begin
     'horizontal active key after glow draw failed');
   Check(CapturedOpaqueNoteVertexCount >= 16,
     'horizontal active keys did not remain lit');
+  Check((FirstActiveKeyQuad >= 0) and
+    (FirstActiveKeyQuad < LastBlackKeyQuad) and
+    (LastBlackKeyQuad < LastActiveKeyQuad),
+    Format('horizontal active white key order mismatch: %d, %d, %d',
+      [FirstActiveKeyQuad, LastBlackKeyQuad, LastActiveKeyQuad]));
   HorizontalBaseTranslucentVertexCount := CapturedTranslucentVertexCount;
   Check(DrawHorizontalPianoRoll3D(@Video, Data, 0.5, Settings),
     'horizontal active key and glow draw failed');
@@ -358,6 +446,9 @@ begin
   Check(CapturedTranslucentVertexCount >
     HorizontalBaseTranslucentVertexCount,
     'horizontal strike glow was not generated');
+  Check(CapturedConnectorMaxX - CapturedConnectorMinX >
+    Settings.KeyLength * 0.35,
+    'horizontal black key effect was not moved to the black key edge');
 
   Video.DrawPoly := nil;
   Check(not DrawVerticalPianoRoll3D(@Video, Data, 0.0, Settings),

@@ -1,4 +1,4 @@
-unit SYNC_PianoRoll_Vertical3DDisplay;
+﻿unit SYNC_PianoRoll_Vertical3DDisplay;
 
 // 音階をX、時間をY、実厚みをZへ割り当てる縦3D表示を実装する。
 
@@ -151,13 +151,14 @@ begin
 
   SideColor := ShadeColor(Color, 0.62);
   EndColor := ShadeColor(Color, 0.48);
-  // 奥側端面は視点によって上面へ重なって見えるため生成しない。
-  // 側面を先に、上面を最後に描き、上面が常に形状の表面として残るようにする。
+  // 両端面を含む側面を先に、上面を最後に描き、どの視点でも開口部を見せない。
   AppendVerticalQuad(Vertices, VertexCount, X0, X0, Time0, Time1,
     BaseHeight, TopHeight, DisplayTime, TimeAxisLength, BaseY, SideColor);
   AppendVerticalQuad(Vertices, VertexCount, X1, X1, Time1, Time0,
     BaseHeight, TopHeight, DisplayTime, TimeAxisLength, BaseY, SideColor);
   AppendVerticalQuad(Vertices, VertexCount, X0, X1, Time0, Time0,
+    BaseHeight, TopHeight, DisplayTime, TimeAxisLength, BaseY, EndColor);
+  AppendVerticalQuad(Vertices, VertexCount, X1, X0, Time1, Time1,
     BaseHeight, TopHeight, DisplayTime, TimeAxisLength, BaseY, EndColor);
   AppendPlaneQuadAtHeight(Vertices, VertexCount, X0, X1, Time0, Time1,
     DisplayTime, TimeAxisLength, BaseY, TopHeight, Color);
@@ -180,14 +181,18 @@ procedure ResolveKeyboardBounds(ObjectWidth, Key, LowestKey,
   HighestKey: Integer; const Settings: TPianoRollDisplaySettings;
   out X0, X1: Double);
 var
-  Center, RangeCenter, Width: Double;
+  Center, Gap, RangeCenter, Width: Double;
 begin
   RangeCenter := (GetPianoKeyPitchCenter(LowestKey) +
     GetPianoKeyPitchCenter(HighestKey)) * 0.5;
   Center := (GetPianoKeyPitchCenter(Key) - RangeCenter) *
     Settings.KeyThickness;
   if (Settings.KeyboardType = pktHarp7) or not IsPianoBlackKey(Key) then
-    Width := Settings.KeyThickness
+  begin
+    // 2Dの暗い外縁に相当する分だけ上面を細くし、内部側面を増やさず境界を見せる。
+    Gap := ScalePianoRollThickness(1, Settings.KeyThickness);
+    Width := Max(1.0, Settings.KeyThickness - Gap);
+  end
   else
     Width := Settings.KeyThickness * 0.62;
   X0 := Center - Width * 0.5;
@@ -200,7 +205,7 @@ procedure AppendConnectedWhiteKeyboard(var Vertices: TVertexColorArray;
   const Settings: TPianoRollDisplaySettings);
 var
   BaseHeight: Double;
-  EndColor, SideColor: TPianoRollColor;
+  EndColor: TPianoRollColor;
   HasWhiteKey: Boolean;
   Key: Integer;
   OuterX0, OuterX1, TopHeight, X0, X1: Double;
@@ -226,17 +231,13 @@ begin
   BaseHeight := TopHeight - Max(0.0, Settings.WhiteKey3DThickness);
   if Settings.WhiteKey3DThickness > 0.0 then
   begin
-    SideColor := ShadeColor(Settings.Palette.WhiteKey, 0.62);
     EndColor := ShadeColor(Settings.Palette.WhiteKey, 0.48);
-    // 隣接鍵の共有境界には側面を作らず、鍵盤全体の外周だけを押し出す。
-    AppendVerticalQuad(Vertices, VertexCount, OuterX0, OuterX0,
-      FrontTime, 0.0, BaseHeight, TopHeight, DisplayTime, TimeAxisLength,
-      BaseY, SideColor);
-    AppendVerticalQuad(Vertices, VertexCount, OuterX1, OuterX1,
-      0.0, FrontTime, BaseHeight, TopHeight, DisplayTime, TimeAxisLength,
-      BaseY, SideColor);
+    // 音階方向の端面は斜め視点で折れた板に見えるため作らず、手前の連続面だけで厚みを示す。
     AppendVerticalQuad(Vertices, VertexCount, OuterX0, OuterX1,
       FrontTime, FrontTime, BaseHeight, TopHeight, DisplayTime, TimeAxisLength,
+      BaseY, EndColor);
+    AppendVerticalQuad(Vertices, VertexCount, OuterX1, OuterX0,
+      0.0, 0.0, BaseHeight, TopHeight, DisplayTime, TimeAxisLength,
       BaseY, EndColor);
   end;
 
@@ -339,11 +340,13 @@ procedure AppendActiveKeysAndStrikeGlow(var Vertices: TVertexColorArray;
   TimeSeconds: Double; ObjectWidth, LowestKey, HighestKey, MinTrack,
   MaxTrack, MinMusicKey, MaxMusicKey: Integer;
   FrontTime, DisplayTime, TimeAxisLength, BaseY: Double;
-  const Settings: TPianoRollDisplaySettings);
+  const Settings: TPianoRollDisplaySettings;
+  DrawWhiteKeys, DrawBlackKeys, DrawGlow: Boolean);
 var
   Color: TPianoRollColor;
   Elapsed, GlowRadius, KeyTopHeight, Strength, TimeRadius: Double;
   I, PeakAlpha: Integer;
+  IsBlackKey: Boolean;
   Note: TPianoRollNoteData;
   X0, X1, XCenter: Double;
 begin
@@ -362,21 +365,26 @@ begin
       Settings.GradientColor2, Settings.Palette);
     ResolveKeyboardBounds(ObjectWidth, Note.Key, LowestKey, HighestKey,
       Settings, X0, X1);
-    if IsPianoBlackKey(Note.Key) then
+    IsBlackKey := IsPianoBlackKey(Note.Key);
+    if IsBlackKey then
     begin
       KeyTopHeight := 4.0 + Max(0.0, Settings.BlackKey3DThickness);
-      AppendPlaneQuadAtHeight(Vertices, VertexCount, X0, X1,
-        FrontTime * 0.62, 0.0, DisplayTime, TimeAxisLength, BaseY,
-        KeyTopHeight, Color);
+      if DrawBlackKeys then
+        AppendPlaneQuadAtHeight(Vertices, VertexCount, X0, X1,
+          FrontTime * 0.62, 0.0, DisplayTime, TimeAxisLength, BaseY,
+          KeyTopHeight, Color);
     end
     else
     begin
       KeyTopHeight := 4.0;
-      AppendPlaneQuadAtHeight(Vertices, VertexCount, X0, X1,
-        FrontTime, 0.0, DisplayTime, TimeAxisLength, BaseY,
-        KeyTopHeight, Color);
+      if DrawWhiteKeys then
+        AppendPlaneQuadAtHeight(Vertices, VertexCount, X0, X1,
+          FrontTime, 0.0, DisplayTime, TimeAxisLength, BaseY,
+          KeyTopHeight, Color);
     end;
 
+    if not DrawGlow then
+      Continue;
     case Settings.StrikeEffectType of
       psetType1:
         ;
@@ -512,6 +520,11 @@ begin
   AppendConnectedWhiteKeyboard(Vertices, VertexCount, Width,
     LowestKey, HighestKey, Time1, DisplayTime, TimeAxisLength, BaseY,
     Settings);
+  // 点灯した白鍵を黒鍵より先に置き、同一Z平面でも黒鍵の重なりを維持する。
+  AppendActiveKeysAndStrikeGlow(Vertices, VertexCount, Data, TimeSeconds,
+    Width, LowestKey, HighestKey, MinTrack, MaxTrack, MinMusicKey,
+    MaxMusicKey, Time1, DisplayTime, TimeAxisLength, BaseY, Settings,
+    True, False, False);
   for Key := LowestKey to HighestKey do
     if IsPianoRollKeyVisible(Key, Settings.KeyboardType) and
       IsPianoBlackKey(Key) then
@@ -524,9 +537,15 @@ begin
         Settings.BlackKey3DThickness, True, Settings.Palette.BlackKey);
     end;
 
+  // 黒鍵の点灯面を通常黒鍵の上へ重ね、最後に両鍵共通の発光だけを追加する。
   AppendActiveKeysAndStrikeGlow(Vertices, VertexCount, Data, TimeSeconds,
     Width, LowestKey, HighestKey, MinTrack, MaxTrack, MinMusicKey,
-    MaxMusicKey, Time1, DisplayTime, TimeAxisLength, BaseY, Settings);
+    MaxMusicKey, Time1, DisplayTime, TimeAxisLength, BaseY, Settings,
+    False, True, False);
+  AppendActiveKeysAndStrikeGlow(Vertices, VertexCount, Data, TimeSeconds,
+    Width, LowestKey, HighestKey, MinTrack, MaxTrack, MinMusicKey,
+    MaxMusicKey, Time1, DisplayTime, TimeAxisLength, BaseY, Settings,
+    False, False, True);
 
   if VertexCount > 0 then
     Result := Video^.DrawPoly(VERTEX_QUAD_COLOR, @Vertices[0],
