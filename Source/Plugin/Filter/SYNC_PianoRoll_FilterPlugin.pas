@@ -72,6 +72,8 @@ var
   SizePresetList: array[0..2] of TFILTER_ITEM_SELECT_ITEM;
   SingleTrackColorItem: TFILTER_ITEM_COLOR;
   StrikeLineColorItem: TFILTER_ITEM_COLOR;
+  StrikeEffectTypeItem: TFILTER_ITEM_SELECT;
+  StrikeEffectTypeList: array[0..1] of TFILTER_ITEM_SELECT_ITEM;
   StrikePositionItem: TFILTER_ITEM_TRACK;
   TimeShiftItem: TFILTER_ITEM_TRACK;
   TrackColorModeItem: TFILTER_ITEM_SELECT;
@@ -80,7 +82,7 @@ var
   WhiteKeyColorItem: TFILTER_ITEM_COLOR;
   WhiteKey3DThicknessItem: TFILTER_ITEM_TRACK;
   WhiteLaneColorItem: TFILTER_ITEM_COLOR;
-  PluginItems: array[0..36] of Pointer;
+  PluginItems: array[0..37] of Pointer;
 
 function GetFilterColor(const Item: TFILTER_ITEM_COLOR;
   Alpha: Byte): TPianoRollColor;
@@ -199,6 +201,13 @@ begin
     BlackKey3DThicknessItem.Value, 0.0, 500.0);
   Settings.Note3DThickness := EnsureRange(
     Note3DThicknessItem.Value, 0.0, 500.0);
+  case StrikeEffectTypeItem.Value of
+    Ord(psetType1):
+      Settings.StrikeEffectType := psetType1;
+  else
+    // 未知値は既存プロジェクトと同じ初期エフェクトへ戻す。
+    Settings.StrikeEffectType := psetType1;
+  end;
   Settings.NoteDepthEnabled := NoteDepthItem.Value <> 0;
   Settings.ShowLanes := ShowLanesItem.Value <> 0;
   Settings.ShowBeatLines := ShowBeatLinesItem.Value <> 0;
@@ -544,6 +553,15 @@ begin
     StyleTypeItem.Value := Ord(pstType1);
     StyleTypeItem.List := @StyleTypeList[0];
 
+    StrikeEffectTypeList[0].Name := 'Type1';
+    StrikeEffectTypeList[0].Value := Ord(psetType1);
+    StrikeEffectTypeList[1].Name := nil;
+    StrikeEffectTypeList[1].Value := 0;
+    StrikeEffectTypeItem.ItemType := 'select';
+    StrikeEffectTypeItem.Name := '発音エフェクト';
+    StrikeEffectTypeItem.Value := Ord(psetType1);
+    StrikeEffectTypeItem.List := @StrikeEffectTypeList[0];
+
     OrientationList[0].Name := '縦';
     OrientationList[0].Value := Ord(poVertical);
     OrientationList[1].Name := '横';
@@ -618,7 +636,9 @@ begin
     PluginItems[33] := @NoteDepthItem;
     PluginItems[34] := @GradientColor1Item;
     PluginItems[35] := @GradientColor2Item;
-    PluginItems[36] := nil;
+    // 将来Typeを増やしても既存項目のインデックスを変えないよう末尾へ置く。
+    PluginItems[36] := @StrikeEffectTypeItem;
+    PluginItems[37] := nil;
     Plugin.Items := @PluginItems[0];
   end;
   Result := @Plugin;

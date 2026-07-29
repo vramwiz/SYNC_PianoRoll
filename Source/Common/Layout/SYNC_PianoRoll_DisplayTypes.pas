@@ -30,6 +30,11 @@ type
     poHorizontal
   );
 
+  // 表示方式や方向に依存せず、発音位置へ適用するエフェクトをTypeで選択する。
+  TPianoRollStrikeEffectType = (
+    psetType1
+  );
+
   // 基準音域から実効音域を動かす追従方式。
   TPianoRollPitchFollowMode = (
     ppfmNone,
@@ -52,6 +57,7 @@ type
     WhiteKey3DThickness: Double; // 3D平面から手前へ押し出す白鍵の厚み。0は平面。
     BlackKey3DThickness: Double; // 3D平面から手前へ押し出す黒鍵の厚み。0は平面。
     Note3DThickness: Double;     // 3D平面から手前へ押し出すノートの厚み。0は平面。
+    StrikeEffectType: TPianoRollStrikeEffectType; // 発音位置エフェクトのType。
     NoteDepthEnabled: Boolean; // 縁、面取り、つやによる疑似立体表示。
     ShowLanes: Boolean;       // 白鍵・黒鍵に対応するレーン背景を表示する。
     ShowBeatLines: Boolean;   // 拍線と小節線を表示する。
@@ -107,6 +113,7 @@ begin
   Settings.WhiteKey3DThickness := 0.0;
   Settings.BlackKey3DThickness := 0.0;
   Settings.Note3DThickness := 0.0;
+  Settings.StrikeEffectType := psetType1;
   Settings.NoteDepthEnabled := True;
   Settings.ShowLanes := True;
   Settings.ShowBeatLines := True;

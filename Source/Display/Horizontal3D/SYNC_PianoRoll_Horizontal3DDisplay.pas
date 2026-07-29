@@ -376,6 +376,12 @@ begin
         KeyTopHeight, Color);
     end;
 
+    case Settings.StrikeEffectType of
+      psetType1:
+        ;
+    else
+      Continue;
+    end;
     Elapsed := TimeSeconds - Note.StartSeconds;
     if (Elapsed < 0.0) or (Elapsed >= STRIKE_GLOW_DURATION) then
       Continue;

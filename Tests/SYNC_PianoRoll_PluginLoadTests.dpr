@@ -77,7 +77,7 @@ type
   end;
   PPluginTable = ^TPluginTable;
 
-  TItemArray = array[0..36] of Pointer;
+  TItemArray = array[0..37] of Pointer;
   PItemArray = ^TItemArray;
 
 var
@@ -111,10 +111,10 @@ begin
     Items := PItemArray(Table^.Items);
     if Items = nil then
       raise Exception.Create('plugin items are nil');
-    for I := 0 to 35 do
+    for I := 0 to 36 do
       if Items^[I] = nil then
         raise Exception.CreateFmt('plugin item %d is nil', [I]);
-    if Items^[36] <> nil then
+    if Items^[37] <> nil then
       raise Exception.Create('plugin items are not terminated');
     FileItem := PFileItem(Items^[0]);
     if string(FileItem^.ItemType) <> 'file' then
@@ -233,6 +233,10 @@ begin
       (PColorItem(Items^[35])^.G <> 0) or
       (PColorItem(Items^[35])^.B <> 255) then
       raise Exception.Create('gradient color 2 item mismatch');
+    if (string(PItemHeader(Items^[36])^.ItemType) <> 'select') or
+      (string(PItemHeader(Items^[36])^.Name) <> '発音エフェクト') or
+      (PSelectItem(Items^[36])^.Value <> 0) then
+      raise Exception.Create('strike effect type item mismatch');
     if (PColorItem(Items^[24])^.R <> 242) or
       (PColorItem(Items^[24])^.G <> 242) or
       (PColorItem(Items^[24])^.B <> 242) or
@@ -340,6 +344,12 @@ begin
       (PSelectListArray(
         PSelectItem(Items^[33])^.List)^[2].Name <> nil) then
       raise Exception.Create('note depth select list mismatch');
+    if (PSelectItem(Items^[36])^.List = nil) or
+      (string(PSingleChoiceListArray(
+        PSelectItem(Items^[36])^.List)^[0].Name) <> 'Type1') or
+      (PSingleChoiceListArray(
+        PSelectItem(Items^[36])^.List)^[1].Name <> nil) then
+      raise Exception.Create('strike effect type list mismatch');
     Writeln('PASS');
   finally
     FreeLibrary(ModuleHandle);

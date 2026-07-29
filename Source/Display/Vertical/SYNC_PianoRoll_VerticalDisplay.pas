@@ -462,9 +462,12 @@ begin
         Settings.GradientColor1, Settings.GradientColor2, Settings.Palette),
       Settings);
   end;
-  DrawStrikeGlow(Canvas, Data, TimeSeconds, StrikePosition,
-    LowestKey, HighestKey, MinTrack, MaxTrack, MinMusicKey, MaxMusicKey,
-    Settings);
+  case Settings.StrikeEffectType of
+    psetType1:
+      DrawStrikeGlow(Canvas, Data, TimeSeconds, StrikePosition,
+        LowestKey, HighestKey, MinTrack, MaxTrack, MinMusicKey, MaxMusicKey,
+        Settings);
+  end;
 end;
 
 function CreateVerticalPianoRollDisplay: IPianoRollDisplay;
