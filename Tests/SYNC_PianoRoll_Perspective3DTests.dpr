@@ -39,9 +39,11 @@ var
   CapturedBlackMaxY, CapturedBlackMinY: Single;
   CapturedBlackMaxZ, CapturedBlackMinZ: Single;
   CapturedNoteVertexCount: Integer;
+  CapturedOpaqueNoteVertexCount: Integer;
   CapturedNoteXRange: Single;
   CapturedNoteYRange: Single;
   CapturedNoteZRange: Single;
+  CapturedTranslucentVertexCount: Integer;
   CapturedVertexCount, CapturedVertexType: Integer;
   CapturedWhiteMaxX, CapturedWhiteMinX: Single;
   CapturedWhiteMaxY, CapturedWhiteMinY: Single;
@@ -63,6 +65,8 @@ begin
   CapturedVertexType := VertexType;
   CapturedVertexCount := VertexNum;
   CapturedNoteVertexCount := 0;
+  CapturedOpaqueNoteVertexCount := 0;
+  CapturedTranslucentVertexCount := 0;
   MinNoteX := MaxSingle;
   MaxNoteX := -MaxSingle;
   MinNoteY := MaxSingle;
@@ -84,11 +88,15 @@ begin
   for I := 0 to VertexNum - 1 do
   begin
     Vertex := PVertexArray(VertexList)^[I];
+    if (Vertex.A > 0.0001) and (Vertex.A < 0.9999) then
+      Inc(CapturedTranslucentVertexCount);
     if (Abs(Vertex.R - 7 / 255.0) < 0.0001) and
       (Abs(Vertex.G - 8 / 255.0) < 0.0001) and
       (Abs(Vertex.B - 9 / 255.0) < 0.0001) then
     begin
       Inc(CapturedNoteVertexCount);
+      if Vertex.A >= 0.9999 then
+        Inc(CapturedOpaqueNoteVertexCount);
       MinNoteX := Min(MinNoteX, Vertex.X);
       MaxNoteX := Max(MaxNoteX, Vertex.X);
       MinNoteY := Min(MinNoteY, Vertex.Y);
@@ -187,11 +195,13 @@ end;
 var
   BaselineBlackTopZ, BaselineWhiteTopZ: Single;
   Data: IPianoRollMusicData;
+  HorizontalBaseTranslucentVertexCount: Integer;
   HorizontalBlackTopZ, HorizontalWhiteTopZ: Single;
   HorizontalStandardVertexCount, HorizontalWhiteThicknessVertexCount: Integer;
   ObjectInfo: TOBJECT_INFO;
   Settings: TPianoRollDisplaySettings;
   StandardVertexCount: Integer;
+  VerticalBaseTranslucentVertexCount: Integer;
   WhiteThicknessVertexCount: Integer;
   Video: TFILTER_PROC_VIDEO;
 begin
@@ -319,6 +329,35 @@ begin
   Check(CapturedVertexCount =
     HorizontalWhiteThicknessVertexCount + 5 * 12 + 2 * 12,
     'horizontal note side faces mismatch');
+
+  Settings.WhiteKey3DThickness := 0;
+  Settings.BlackKey3DThickness := 0;
+  Settings.Note3DThickness := 0;
+  Check(DrawVerticalPianoRoll3D(@Video, Data, 0.9, Settings),
+    'vertical active key after glow draw failed');
+  Check(CapturedOpaqueNoteVertexCount >= 16,
+    'vertical active keys did not remain lit');
+  VerticalBaseTranslucentVertexCount := CapturedTranslucentVertexCount;
+  Check(DrawVerticalPianoRoll3D(@Video, Data, 0.5, Settings),
+    'vertical active key and glow draw failed');
+  Check(CapturedOpaqueNoteVertexCount >= 16,
+    'vertical active keys were not recolored');
+  Check(CapturedTranslucentVertexCount >
+    VerticalBaseTranslucentVertexCount,
+    'vertical strike glow was not generated');
+
+  Check(DrawHorizontalPianoRoll3D(@Video, Data, 0.9, Settings),
+    'horizontal active key after glow draw failed');
+  Check(CapturedOpaqueNoteVertexCount >= 16,
+    'horizontal active keys did not remain lit');
+  HorizontalBaseTranslucentVertexCount := CapturedTranslucentVertexCount;
+  Check(DrawHorizontalPianoRoll3D(@Video, Data, 0.5, Settings),
+    'horizontal active key and glow draw failed');
+  Check(CapturedOpaqueNoteVertexCount >= 16,
+    'horizontal active keys were not recolored');
+  Check(CapturedTranslucentVertexCount >
+    HorizontalBaseTranslucentVertexCount,
+    'horizontal strike glow was not generated');
 
   Video.DrawPoly := nil;
   Check(not DrawVerticalPianoRoll3D(@Video, Data, 0.0, Settings),

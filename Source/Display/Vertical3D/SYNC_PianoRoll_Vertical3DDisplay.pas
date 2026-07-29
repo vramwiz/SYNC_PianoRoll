@@ -22,7 +22,9 @@ uses
   SYNC_PianoRoll_PitchFollow;
 
 const
+  GLOW_GRID_HALF = 6;
   MAX_QUAD_COUNT = 65536;
+  STRIKE_GLOW_DURATION = 0.35;
 
 type
   TVertexColorArray = array of TVERTEX_COLOR;
@@ -258,6 +260,145 @@ begin
     Result := Note.StartSeconds + 0.2;
 end;
 
+function IsNoteActiveAtTime(const Note: TPianoRollNoteData;
+  TimeSeconds: Double): Boolean;
+begin
+  Result := (TimeSeconds >= Note.StartSeconds) and
+    (TimeSeconds < GetNoteEndSeconds(Note));
+end;
+
+function MakeGlowColor(const Color: TPianoRollColor;
+  WhiteAmount: Double; Alpha: Integer): TPianoRollColor;
+begin
+  WhiteAmount := EnsureRange(WhiteAmount, 0.0, 1.0);
+  Result := PianoRollColor(
+    Round(Color.R + (255 - Color.R) * WhiteAmount),
+    Round(Color.G + (255 - Color.G) * WhiteAmount),
+    Round(Color.B + (255 - Color.B) * WhiteAmount),
+    EnsureRange(Alpha, 0, 255));
+end;
+
+function GetGlowVertexColor(const Color: TPianoRollColor;
+  NormalizedX, NormalizedTime: Double; PeakAlpha: Integer): TPianoRollColor;
+var
+  Distance, Strength: Double;
+begin
+  Distance := Sqrt(Sqr(NormalizedX) + Sqr(NormalizedTime));
+  if Distance >= 1.0 then
+    Strength := 0.0
+  else
+    // smoothstepの逆カーブで中心から外周まで段差なく消す。
+    Strength := 1.0 - Distance * Distance * (3.0 - 2.0 * Distance);
+  Result := MakeGlowColor(Color, 0.25 + Strength * 0.65,
+    Round(PeakAlpha * Strength));
+end;
+
+procedure AppendRadialGlowPlane(var Vertices: TVertexColorArray;
+  var VertexCount: Integer; CenterX, PitchRadius, TimeRadius, DisplayTime,
+  TimeAxisLength, BaseY, Height: Double; PeakAlpha: Integer;
+  const Color: TPianoRollColor);
+var
+  A00, A01, A10, A11: TPianoRollColor;
+  GridX, GridTime: Integer;
+  NX0, NX1, NT0, NT1, X0, X1: Double;
+  Y0, Y1, Z0, Z1: Single;
+begin
+  for GridTime := -GLOW_GRID_HALF to GLOW_GRID_HALF - 1 do
+    for GridX := -GLOW_GRID_HALF to GLOW_GRID_HALF - 1 do
+    begin
+      if VertexCount div 4 >= MAX_QUAD_COUNT then
+        Exit;
+      NX0 := GridX / GLOW_GRID_HALF;
+      NX1 := (GridX + 1) / GLOW_GRID_HALF;
+      NT0 := GridTime / GLOW_GRID_HALF;
+      NT1 := (GridTime + 1) / GLOW_GRID_HALF;
+      A00 := GetGlowVertexColor(Color, NX0, NT0, PeakAlpha);
+      A01 := GetGlowVertexColor(Color, NX0, NT1, PeakAlpha);
+      A10 := GetGlowVertexColor(Color, NX1, NT0, PeakAlpha);
+      A11 := GetGlowVertexColor(Color, NX1, NT1, PeakAlpha);
+      if (A00.A = 0) and (A01.A = 0) and
+        (A10.A = 0) and (A11.A = 0) then
+        Continue;
+      EnsureVertexCapacity(Vertices, VertexCount + 4);
+      X0 := CenterX + NX0 * PitchRadius;
+      X1 := CenterX + NX1 * PitchRadius;
+      ResolvePlanePoint(NT0 * TimeRadius, DisplayTime, TimeAxisLength,
+        BaseY, Height, Y0, Z0);
+      ResolvePlanePoint(NT1 * TimeRadius, DisplayTime, TimeAxisLength,
+        BaseY, Height, Y1, Z1);
+      SetVertex(Vertices[VertexCount], X0, Y0, Z0, A00);
+      SetVertex(Vertices[VertexCount + 1], X0, Y1, Z1, A01);
+      SetVertex(Vertices[VertexCount + 2], X1, Y1, Z1, A11);
+      SetVertex(Vertices[VertexCount + 3], X1, Y0, Z0, A10);
+      Inc(VertexCount, 4);
+    end;
+end;
+
+procedure AppendActiveKeysAndStrikeGlow(var Vertices: TVertexColorArray;
+  var VertexCount: Integer; const Data: IPianoRollMusicData;
+  TimeSeconds: Double; ObjectWidth, LowestKey, HighestKey, MinTrack,
+  MaxTrack, MinMusicKey, MaxMusicKey: Integer;
+  FrontTime, DisplayTime, TimeAxisLength, BaseY: Double;
+  const Settings: TPianoRollDisplaySettings);
+var
+  Color: TPianoRollColor;
+  Elapsed, GlowRadius, KeyTopHeight, Strength, TimeRadius: Double;
+  I, PeakAlpha: Integer;
+  Note: TPianoRollNoteData;
+  X0, X1, XCenter: Double;
+begin
+  if Settings.KeyLength <= 0 then
+    Exit;
+  for I := 0 to Data.NoteCount - 1 do
+  begin
+    Note := Data.Notes[I];
+    if not IsNoteActiveAtTime(Note, TimeSeconds) or
+      (Note.Key < LowestKey) or (Note.Key > HighestKey) or
+      not IsPianoRollKeyVisible(Note.Key, Settings.KeyboardType) then
+      Continue;
+    Color := ResolvePianoRollTrackColor(Note.TrackIndex, Note.Key,
+      MinTrack, MaxTrack, MinMusicKey, MaxMusicKey, Settings.TrackColorMode,
+      Settings.SingleTrackColor, Settings.GradientColor1,
+      Settings.GradientColor2, Settings.Palette);
+    ResolveKeyboardBounds(ObjectWidth, Note.Key, LowestKey, HighestKey,
+      Settings, X0, X1);
+    if IsPianoBlackKey(Note.Key) then
+    begin
+      KeyTopHeight := 4.0 + Max(0.0, Settings.BlackKey3DThickness);
+      AppendPlaneQuadAtHeight(Vertices, VertexCount, X0, X1,
+        FrontTime * 0.62, 0.0, DisplayTime, TimeAxisLength, BaseY,
+        KeyTopHeight, Color);
+    end
+    else
+    begin
+      KeyTopHeight := 4.0;
+      AppendPlaneQuadAtHeight(Vertices, VertexCount, X0, X1,
+        FrontTime, 0.0, DisplayTime, TimeAxisLength, BaseY,
+        KeyTopHeight, Color);
+    end;
+
+    Elapsed := TimeSeconds - Note.StartSeconds;
+    if (Elapsed < 0.0) or (Elapsed >= STRIKE_GLOW_DURATION) then
+      Continue;
+    Strength := 1.0 - Elapsed / STRIKE_GLOW_DURATION;
+    PeakAlpha := Round(255 * Sqrt(Strength));
+    GlowRadius := Max(16.0, Settings.KeyThickness *
+      (0.85 + (1.0 - Strength) * 0.25));
+    TimeRadius := GlowRadius / TimeAxisLength * DisplayTime;
+    XCenter := (X0 + X1) * 0.5;
+
+    // 鍵盤上面とノート上面のZ差を発光面でつなぎ、打鍵点を独立した光源に見せる。
+    AppendVerticalQuad(Vertices, VertexCount,
+      XCenter - (X1 - X0) * 0.30, XCenter + (X1 - X0) * 0.30,
+      0.0, 0.0,
+      2.0, KeyTopHeight, DisplayTime, TimeAxisLength, BaseY,
+      MakeGlowColor(Color, 0.70, Round(PeakAlpha * 0.55)));
+    AppendRadialGlowPlane(Vertices, VertexCount, XCenter, GlowRadius,
+      TimeRadius, DisplayTime, TimeAxisLength, BaseY, KeyTopHeight + 0.35,
+      PeakAlpha, Color);
+  end;
+end;
+
 function DrawVerticalPianoRoll3D(Video: PFILTER_PROC_VIDEO;
   const Data: IPianoRollMusicData; TimeSeconds: Double;
   const Settings: TPianoRollDisplaySettings): Boolean;
@@ -376,6 +517,10 @@ begin
         DisplayTime, TimeAxisLength, BaseY, 4.0,
         Settings.BlackKey3DThickness, True, Settings.Palette.BlackKey);
     end;
+
+  AppendActiveKeysAndStrikeGlow(Vertices, VertexCount, Data, TimeSeconds,
+    Width, LowestKey, HighestKey, MinTrack, MaxTrack, MinMusicKey,
+    MaxMusicKey, Time1, DisplayTime, TimeAxisLength, BaseY, Settings);
 
   if VertexCount > 0 then
     Result := Video^.DrawPoly(VERTEX_QUAD_COLOR, @Vertices[0],
