@@ -420,7 +420,8 @@ function DrawHorizontalPianoRoll3D(Video: PFILTER_PROC_VIDEO;
   const Data: IPianoRollMusicData; TimeSeconds: Double;
   const Settings: TPianoRollDisplaySettings): Boolean;
 var
-  BaseX, BeatHalfWidth, DisplayTime, FutureTime, TimeAxisLength: Double;
+  BaseX, BeatHalfWidth, DisplayTime, FutureTime, PastTime,
+    TimeAxisLength: Double;
   EndSeconds, Time0, Time1, Y0, Y1: Double;
   Beat: TPianoRollBeatData;
   Color: TPianoRollColor;
@@ -450,6 +451,9 @@ begin
   BaseX := Width * (0.5 - EnsureRange(Settings.StrikePosition, 0.0, 1.0));
   TimeAxisLength := Max(1.0,
     Width * EnsureRange(Settings.StrikePosition, 0.0, 1.0));
+  // 未来側と同じ時間縮尺から、発音位置より過去側の画面内に収まる秒数を求める。
+  PastTime := DisplayTime * Max(0.0, Width - TimeAxisLength) /
+    TimeAxisLength;
   VertexCount := 0;
   SetLength(Vertices, 1024);
 
@@ -497,7 +501,7 @@ begin
       not IsPianoRollKeyVisible(Note.Key, Settings.KeyboardType) then
       Continue;
     EndSeconds := GetNoteEndSeconds(Note);
-    Time0 := Max(0.0, Note.StartSeconds - TimeSeconds);
+    Time0 := Max(-PastTime, Note.StartSeconds - TimeSeconds);
     Time1 := Min(FutureTime, EndSeconds - TimeSeconds);
     if Time1 <= Time0 then
       Continue;
@@ -518,7 +522,7 @@ begin
     0.0, Min(FutureTime, BeatHalfWidth), DisplayTime, TimeAxisLength,
     BaseX, 3.0, Settings.Palette.StrikeLine);
 
-  // 横表示の鍵盤は発音線から左へ伸ばし、黒鍵を白鍵の左側へ寄せる。
+  // ノートより手前のZへ鍵盤を後から追加し、通過中のノートを鍵盤の下へ隠す。
   Time1 := -Settings.KeyLength / TimeAxisLength * DisplayTime;
   AppendConnectedWhiteKeyboard(Vertices, VertexCount, Height,
     LowestKey, HighestKey, Time1, DisplayTime, TimeAxisLength, BaseX,

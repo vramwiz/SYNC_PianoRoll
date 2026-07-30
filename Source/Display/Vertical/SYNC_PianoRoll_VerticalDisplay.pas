@@ -419,17 +419,7 @@ begin
     DrawBeatLines(Canvas, Data, TimeSeconds, PixelsPerSecond,
       StrikePosition, Settings);
   end;
-  DrawKeyboard(Canvas, StrikePosition, LowestKey, HighestKey, Settings);
-  DrawActiveKeys(Canvas, Data, TimeSeconds, StrikePosition,
-    LowestKey, HighestKey, MinTrack, MaxTrack, MinMusicKey, MaxMusicKey,
-    Settings);
-  Canvas.FillRectangle(0, StrikePosition, Canvas.Width, StrikePosition +
-    ScalePianoRollThickness(2, Settings.KeyThickness),
-    Settings.Palette.StrikeLine);
-
-  if Settings.DisplayTime <= 0 then
-    Exit;
-
+  if Settings.DisplayTime > 0 then
   for I := 0 to Data.NoteCount - 1 do
   begin
     Note := Data.Notes[I];
@@ -439,15 +429,13 @@ begin
     EndSeconds := Note.EndSeconds;
     if EndSeconds < Note.StartSeconds then
       EndSeconds := Note.StartSeconds + 0.2;
-    if EndSeconds < TimeSeconds then
-      Continue;
-
     StartPosition := StrikePosition -
       Round((Note.StartSeconds - TimeSeconds) * PixelsPerSecond);
     EndPosition := StrikePosition -
       Round((EndSeconds - TimeSeconds) * PixelsPerSecond);
     TopPosition := Min(StartPosition, EndPosition);
-    BottomPosition := Min(StrikePosition, Max(StartPosition, EndPosition));
+    // 発音後も画面外へ抜けるまで過去側へ流し、中央配置した鍵盤でノートが途切れないようにする。
+    BottomPosition := Max(StartPosition, EndPosition);
     if (BottomPosition < 0) or (TopPosition >= Canvas.Height) then
       Continue;
 
@@ -462,12 +450,23 @@ begin
         Settings.GradientColor1, Settings.GradientColor2, Settings.Palette),
       Settings);
   end;
-  case Settings.StrikeEffectType of
-    psetType1:
-      DrawStrikeGlow(Canvas, Data, TimeSeconds, StrikePosition,
-        LowestKey, HighestKey, MinTrack, MaxTrack, MinMusicKey, MaxMusicKey,
-        Settings);
-  end;
+
+  // ノートより後に鍵盤を描き、発音位置を通過したノートが鍵盤の下へ隠れる重なりを作る。
+  DrawKeyboard(Canvas, StrikePosition, LowestKey, HighestKey, Settings);
+  DrawActiveKeys(Canvas, Data, TimeSeconds, StrikePosition,
+    LowestKey, HighestKey, MinTrack, MaxTrack, MinMusicKey, MaxMusicKey,
+    Settings);
+  Canvas.FillRectangle(0, StrikePosition, Canvas.Width, StrikePosition +
+    ScalePianoRollThickness(2, Settings.KeyThickness),
+    Settings.Palette.StrikeLine);
+
+  if Settings.DisplayTime > 0 then
+    case Settings.StrikeEffectType of
+      psetType1:
+        DrawStrikeGlow(Canvas, Data, TimeSeconds, StrikePosition,
+          LowestKey, HighestKey, MinTrack, MaxTrack, MinMusicKey, MaxMusicKey,
+          Settings);
+    end;
 end;
 
 function CreateVerticalPianoRollDisplay: IPianoRollDisplay;

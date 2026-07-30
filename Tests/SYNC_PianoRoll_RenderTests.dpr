@@ -1,6 +1,6 @@
 ﻿program SYNC_PianoRoll_RenderTests;
 
-// 縦表示のRGBA描画、配色、立体表示、寸法変更、線幅連動を検証する。
+// 縦表示のRGBA描画、配色、発音後のノート継続、寸法変更、線幅連動を検証する。
 
 {$APPTYPE CONSOLE}
 
@@ -44,12 +44,14 @@ var
   CapturedNoteHighlightPixels: Integer;
   CapturedKeyboardDepthPixels: Integer;
   CapturedOpaquePixels: Integer;
+  CapturedPastStrikePixels: Integer;
   CapturedSingleTrackPixels: Integer;
   CapturedStrikeLinePixels: Integer;
   CapturedVariation1Pixels: Integer;
   CapturedWhiteKeyPixels: Integer;
   CapturedWhiteLanePixels: Integer;
   CapturedWidth: Integer;
+  CaptureStrikePosition: Double = 0.80;
   MockNoteKey: Integer = 60;
 
 procedure Check(Condition: Boolean; const MessageText: string);
@@ -68,6 +70,7 @@ begin
   CapturedWidth := Width;
   CapturedHeight := Height;
   CapturedOpaquePixels := 0;
+  CapturedPastStrikePixels := 0;
   CapturedBlackKeyPixels := 0;
   CapturedBlackLanePixels := 0;
   CapturedBeatLinePixels := 0;
@@ -130,6 +133,8 @@ begin
       (PPixelArray(Buffer)^[I].A = 255) then
     begin
       Inc(CapturedDefaultSinglePixels);
+      if (I div Width) > Round(Height * CaptureStrikePosition) + 2 then
+        Inc(CapturedPastStrikePixels);
       if (I div Width) > Round(Height * 0.80) + 2 then
         Inc(CapturedActiveKeyPixels);
     end;
@@ -318,11 +323,21 @@ begin
       'active vertical white key covered adjacent black keys');
     Check(RenderPianoRoll(@Video, Data, 0.75, Display, Settings),
       'inactive vertical render failed');
-    Check((CapturedActiveKeyPixels = 0) and (CapturedGlowPixels = 0),
-      'vertical strike highlight remained after note end');
+    Check((CapturedPastStrikePixels = 0) and (CapturedGlowPixels = 0),
+      'vertical note was drawn over the keyboard');
     Check(CapturedKeyboardDepthPixels > 0,
       'vertical keyboard depth was not drawn');
     DefaultStrikeLinePixels := CapturedStrikeLinePixels;
+
+    // 鍵盤を中央へ移しても、発音後のノートを発音位置で消さない。
+    Settings.StrikePosition := 0.50;
+    CaptureStrikePosition := 0.50;
+    Check(RenderPianoRoll(@Video, Data, 3.0, Display, Settings),
+      'centered vertical render failed');
+    Check(CapturedPastStrikePixels > 0,
+      'centered vertical note did not emerge beyond the keyboard');
+    Settings.StrikePosition := 0.80;
+    CaptureStrikePosition := 0.80;
 
     // 大サイズでは中の初期寸法と同率で発音線も太くする。
     Settings.KeyLength := 180;

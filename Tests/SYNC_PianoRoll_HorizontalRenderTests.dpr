@@ -1,6 +1,6 @@
 ﻿program SYNC_PianoRoll_HorizontalRenderTests;
 
-// 横表示の時間方向、音階方向、鍵盤、レーン、拍線、ノート立体描画を検証する。
+// 横表示の時間方向、音階方向、鍵盤、発音後のノート継続を検証する。
 
 {$APPTYPE CONSOLE}
 
@@ -45,11 +45,13 @@ var
   CapturedMeasureLine: Boolean;
   CapturedNoteBorder: Boolean;
   CapturedNoteHighlight: Boolean;
+  CapturedNoteLeftOfStrike: Boolean;
   CapturedNoteRightOfStrike: Boolean;
   CapturedStrikeLine: Boolean;
   CapturedTrackPixels: Integer;
   CapturedWhiteLane: Boolean;
   CapturedWidth: Integer;
+  CaptureStrikePosition: Double = 0.75;
   MockNoteKey: Integer = 60;
 
 procedure Check(Condition: Boolean; const MessageText: string);
@@ -88,6 +90,7 @@ begin
   CapturedKeyboardDepth := False;
   CapturedNoteBorder := False;
   CapturedNoteHighlight := False;
+  CapturedNoteLeftOfStrike := False;
   CapturedTrackPixels := 0;
   // 320x240、発音位置75%では発音線がX=80、未来側が右になる。
   CapturedStrikeLine := Matches(80, 10, 255, 255, 255, 160);
@@ -138,7 +141,11 @@ begin
       CapturedNoteHighlight := True;
     if (Pixel.R = 80) and (Pixel.G = 210) and (Pixel.B = 255) and
       (Pixel.A = 255) then
+    begin
       Inc(CapturedTrackPixels);
+      if X < Round(Width * (1.0 - CaptureStrikePosition)) - 2 then
+        CapturedNoteLeftOfStrike := True;
+    end;
   end;
 end;
 
@@ -276,8 +283,18 @@ begin
       'active horizontal white key covered adjacent black keys');
     Check(RenderPianoRoll(@Video, Data, 1.0, Display, Settings),
       'inactive horizontal render failed');
-    Check(not CapturedActiveKey and not CapturedGlow,
-      'horizontal strike highlight remained after note end');
+    Check(not CapturedNoteLeftOfStrike and not CapturedGlow,
+      'horizontal note was drawn over the keyboard');
+
+    // 鍵盤を中央へ移しても、発音後のノートを発音位置で消さない。
+    Settings.StrikePosition := 0.50;
+    CaptureStrikePosition := 0.50;
+    Check(RenderPianoRoll(@Video, Data, 3.0, Display, Settings),
+      'centered horizontal render failed');
+    Check(CapturedNoteLeftOfStrike,
+      'centered horizontal note did not emerge beyond the keyboard');
+    Settings.StrikePosition := 0.75;
+    CaptureStrikePosition := 0.75;
 
     // 横表示でもハープの半音ノートは流れるノートと打鍵表示へ現れない。
     MockNoteKey := 61;

@@ -1,6 +1,6 @@
 program SYNC_PianoRoll_Perspective3DTests;
 
-// 縦横3Dの座標軸、押し出し、ハープの半音除外、DrawPoly判定を検証する。
+// 縦横3Dの座標軸、過去側ノート、鍵盤の前後関係、押し出しを検証する。
 
 {$APPTYPE CONSOLE}
 
@@ -40,13 +40,17 @@ var
   CapturedBlackMaxZ, CapturedBlackMinZ: Single;
   CapturedNoteVertexCount: Integer;
   CapturedOpaqueNoteVertexCount: Integer;
+  CapturedNoteMaxY: Single;
+  CapturedNoteMinX: Single;
+  CapturedNoteMinZ: Single;
   CapturedNoteXRange: Single;
   CapturedNoteYRange: Single;
   CapturedNoteZRange: Single;
   CapturedTranslucentVertexCount: Integer;
   CapturedConnectorMaxX, CapturedConnectorMinX: Single;
   CapturedVertexCount, CapturedVertexType: Integer;
-  FirstActiveKeyQuad, LastActiveKeyQuad, LastBlackKeyQuad: Integer;
+  FirstActiveKeyQuad, FirstWhiteKeyQuad, LastActiveKeyQuad,
+    LastBlackKeyQuad, LastFlowingNoteQuad: Integer;
   CapturedWhiteTopMinXRange, CapturedWhiteTopMinYRange: Single;
   CapturedWhiteMaxX, CapturedWhiteMinX: Single;
   CapturedWhiteMaxY, CapturedWhiteMinY: Single;
@@ -63,7 +67,7 @@ function CapturePoly(VertexType: Integer; VertexList: Pointer;
 var
   I, J: Integer;
   IsActiveKeyQuad, IsBlackKeyQuad, IsConnectorQuad,
-  IsWhiteKeyQuad: Boolean;
+  IsFlowingNoteQuad, IsWhiteKeyQuad: Boolean;
   MaxQuadX, MaxQuadY, MaxQuadZ, MinQuadX, MinQuadY, MinQuadZ: Single;
   MaxNoteX, MaxNoteY, MaxNoteZ, MinNoteX, MinNoteY, MinNoteZ: Single;
   Vertex: TVERTEX_COLOR;
@@ -78,6 +82,8 @@ begin
   FirstActiveKeyQuad := -1;
   LastActiveKeyQuad := -1;
   LastBlackKeyQuad := -1;
+  LastFlowingNoteQuad := -1;
+  FirstWhiteKeyQuad := -1;
   CapturedWhiteTopMinXRange := MaxSingle;
   CapturedWhiteTopMinYRange := MaxSingle;
   MinNoteX := MaxSingle;
@@ -145,6 +151,7 @@ begin
     IsActiveKeyQuad := True;
     IsBlackKeyQuad := True;
     IsConnectorQuad := True;
+    IsFlowingNoteQuad := True;
     IsWhiteKeyQuad := True;
     MinQuadX := MaxSingle;
     MaxQuadX := -MaxSingle;
@@ -178,6 +185,11 @@ begin
         (Vertex.A >= 0.9999) and (Abs(Vertex.Z + 4.0) < 0.001);
       IsConnectorQuad := IsConnectorQuad and
         (Abs(Vertex.A - 140 / 255.0) < 0.0001);
+      IsFlowingNoteQuad := IsFlowingNoteQuad and
+        (Abs(Vertex.R - 7 / 255.0) < 0.0001) and
+        (Abs(Vertex.G - 8 / 255.0) < 0.0001) and
+        (Abs(Vertex.B - 9 / 255.0) < 0.0001) and
+        (Vertex.A >= 0.9999) and (Abs(Vertex.Z + 2.0) < 0.001);
     end;
     if IsActiveKeyQuad then
     begin
@@ -187,8 +199,12 @@ begin
     end;
     if IsBlackKeyQuad then
       LastBlackKeyQuad := I;
+    if IsFlowingNoteQuad then
+      LastFlowingNoteQuad := I;
     if IsWhiteKeyQuad then
     begin
+      if FirstWhiteKeyQuad < 0 then
+        FirstWhiteKeyQuad := I;
       CapturedWhiteTopMinXRange := Min(CapturedWhiteTopMinXRange,
         MaxQuadX - MinQuadX);
       CapturedWhiteTopMinYRange := Min(CapturedWhiteTopMinYRange,
@@ -204,6 +220,9 @@ begin
   CapturedNoteXRange := MaxNoteX - MinNoteX;
   CapturedNoteYRange := MaxNoteY - MinNoteY;
   CapturedNoteZRange := MaxNoteZ - MinNoteZ;
+  CapturedNoteMinX := MinNoteX;
+  CapturedNoteMaxY := MaxNoteY;
+  CapturedNoteMinZ := MinNoteZ;
   Result := 1;
 end;
 
@@ -318,6 +337,30 @@ begin
   StandardVertexCount := CapturedVertexCount;
   BaselineWhiteTopZ := CapturedWhiteMinZ;
   BaselineBlackTopZ := CapturedBlackMinZ;
+
+  // 中央へ移した鍵盤の過去側にもノートを生成し、鍵盤を手前のZと描画順へ置く。
+  Settings.StrikePosition := 0.50;
+  Check(DrawVerticalPianoRoll3D(@Video, Data, 4.0, Settings),
+    'centered vertical past-note draw failed');
+  Check(CapturedNoteVertexCount = 8,
+    'vertical past notes disappeared at the keyboard');
+  Check((LastFlowingNoteQuad >= 0) and
+    (LastFlowingNoteQuad < FirstWhiteKeyQuad) and
+    (CapturedWhiteMinZ < CapturedNoteMinZ - 1.0),
+    'vertical keyboard was not placed in front of notes');
+  Check(CapturedNoteMaxY > CapturedWhiteMaxY + 1.0,
+    'vertical past notes did not emerge beyond the keyboard');
+  Check(DrawHorizontalPianoRoll3D(@Video, Data, 4.0, Settings),
+    'centered horizontal past-note draw failed');
+  Check(CapturedNoteVertexCount = 8,
+    'horizontal past notes disappeared at the keyboard');
+  Check((LastFlowingNoteQuad >= 0) and
+    (LastFlowingNoteQuad < FirstWhiteKeyQuad) and
+    (CapturedWhiteMinZ < CapturedNoteMinZ - 1.0),
+    'horizontal keyboard was not placed in front of notes');
+  Check(CapturedNoteMinX < CapturedWhiteMinX - 1.0,
+    'horizontal past notes did not emerge beyond the keyboard');
+  Settings.StrikePosition := 0.80;
 
   Settings.DisplayTime3D := 30.0;
   Check(DrawVerticalPianoRoll3D(@Video, Data, 0.0, Settings),
