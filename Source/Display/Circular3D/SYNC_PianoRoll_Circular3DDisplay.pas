@@ -503,6 +503,55 @@ begin
   end;
 end;
 
+procedure AppendHorizontalCircularKeyboard(var Vertices: TVertexColorArray;
+  var VertexCount: Integer; Radius, CenterPitch, PitchSpan: Double;
+  LowestKey, HighestKey: Integer; const Settings: TPianoRollDisplaySettings);
+var
+  Angle0, Angle1, BlackThickness, KeyLength, WhiteRadius,
+  WhiteThickness: Double;
+  Key: Integer;
+begin
+  KeyLength := Max(1.0, Settings.KeyLength);
+  WhiteThickness := Max(4.0, Max(0.0, Settings.WhiteKey3DThickness));
+  BlackThickness := Max(2.0, Max(0.0, Settings.BlackKey3DThickness));
+  WhiteRadius := Max(1.0, Radius - WhiteThickness);
+
+  // 円筒の外殻と前後端を閉じ、直線鍵盤の左右端を接続した帯を作る。
+  AppendCylindricalRibbon(Vertices, VertexCount, Radius, 2.0 * Pi, 0.0,
+    0.0, KeyLength, ShadeColor(Settings.Palette.WhiteKey, 0.55));
+  AppendAnnularSector(Vertices, VertexCount, WhiteRadius, Radius,
+    2.0 * Pi, 0.0, 0.0, ShadeColor(Settings.Palette.WhiteKey, 0.48));
+  AppendAnnularSector(Vertices, VertexCount, WhiteRadius, Radius,
+    0.0, 2.0 * Pi, KeyLength, ShadeColor(Settings.Palette.WhiteKey, 0.42));
+
+  // 白鍵の長さは円筒の奥行き方向へ割り当てる。
+  for Key := LowestKey to HighestKey do
+    if IsPianoRollKeyVisible(Key, Settings.KeyboardType) and
+      not IsPianoBlackKey(Key) then
+    begin
+      Angle0 := PitchToAngle(GetPianoKeyPitchCenter(Key) - 0.48,
+        CenterPitch, PitchSpan, True);
+      Angle1 := PitchToAngle(GetPianoKeyPitchCenter(Key) + 0.48,
+        CenterPitch, PitchSpan, True);
+      AppendCylindricalRibbon(Vertices, VertexCount, WhiteRadius,
+        Angle0, Angle1, 0.0, KeyLength, Settings.Palette.WhiteKey);
+    end;
+
+  // 黒鍵は中心側へ押し出し、白鍵より短い円筒面として重ねる。
+  for Key := LowestKey to HighestKey do
+    if IsPianoRollKeyVisible(Key, Settings.KeyboardType) and
+      IsPianoBlackKey(Key) then
+    begin
+      Angle0 := PitchToAngle(GetPianoKeyPitchCenter(Key) - 0.31,
+        CenterPitch, PitchSpan, True);
+      Angle1 := PitchToAngle(GetPianoKeyPitchCenter(Key) + 0.31,
+        CenterPitch, PitchSpan, True);
+      AppendExtrudedCylindricalRibbon(Vertices, VertexCount, WhiteRadius,
+        Angle0, Angle1, 0.0, KeyLength * 0.62, BlackThickness,
+        Settings.Palette.BlackKey);
+    end;
+end;
+
 function DrawCircularPianoRoll3D(Video: PFILTER_PROC_VIDEO;
   const Data: IPianoRollMusicData; TimeSeconds: Double;
   const Settings: TPianoRollDisplaySettings; Horizontal: Boolean): Boolean;
@@ -512,6 +561,7 @@ var
   PastTime, PitchSpan, Radius, Time0, Time1, TimeAxisLength: Double;
   Color: TPianoRollColor;
   Height, HighestKey, I, Key, LowestKey: Integer;
+  HorizontalKeyboard: Boolean;
   MaxMusicKey, MaxTrack, MinMusicKey, MinTrack: Integer;
   Note: TPianoRollNoteData;
   Vertices: TVertexColorArray;
@@ -521,7 +571,8 @@ begin
   if (Video = nil) or (Video^.Object_ = nil) or
     not Assigned(Video^.DrawPoly) or not Assigned(Data) then
     Exit;
-  // 円環型では縦／横を区別せず、常に同じ音階方向を使用する。
+  HorizontalKeyboard := Horizontal;
+  // 今回の横分岐は鍵盤だけに適用し、ノート等は縦Type2の配置を維持する。
   Horizontal := False;
   Width := Video^.Object_^.Width;
   Height := Video^.Object_^.Height;
@@ -587,11 +638,16 @@ begin
       -Time0 / DisplayTime * TimeAxisLength, Settings.Note3DThickness, Color);
   end;
 
-  // 鍵盤の円環本体を先に作り、その後へ白鍵面と黒鍵を重ねる。
-  FrontZ := -4.0;
-  BackZ := FrontZ + Max(4.0, Max(0.0, Settings.WhiteKey3DThickness));
-  AppendConnectedKeyboardBand(Vertices, VertexCount, InnerRadius,
-    OuterRadius, FrontZ, BackZ, Settings.Palette.WhiteKey);
+  if HorizontalKeyboard then
+    AppendHorizontalCircularKeyboard(Vertices, VertexCount, Radius,
+      CenterPitch, PitchSpan, LowestKey, HighestKey, Settings)
+  else
+  begin
+    // 鍵盤の円環本体を先に作り、その後へ白鍵面と黒鍵を重ねる。
+    FrontZ := -4.0;
+    BackZ := FrontZ + Max(4.0, Max(0.0, Settings.WhiteKey3DThickness));
+    AppendConnectedKeyboardBand(Vertices, VertexCount, InnerRadius,
+      OuterRadius, FrontZ, BackZ, Settings.Palette.WhiteKey);
 
   // 白鍵上面は個別に描き、連続帯の上でも鍵の境界を維持する。
   for Key := LowestKey to HighestKey do
@@ -636,10 +692,11 @@ begin
     MinMusicKey, MaxMusicKey, Settings, Horizontal, True);
 
   // 打鍵した内周位置からノート色の光を広げ、短時間で減衰させる。
-  AppendCircularStrikeEffects(Vertices, VertexCount, Data, TimeSeconds,
-    InnerRadius, CenterPitch, PitchSpan, Min(FrontZ, BlackFrontZ) - 0.35,
-    LowestKey, HighestKey, MinTrack, MaxTrack, MinMusicKey, MaxMusicKey,
-    Settings, Horizontal);
+    AppendCircularStrikeEffects(Vertices, VertexCount, Data, TimeSeconds,
+      InnerRadius, CenterPitch, PitchSpan, Min(FrontZ, BlackFrontZ) - 0.35,
+      LowestKey, HighestKey, MinTrack, MaxTrack, MinMusicKey, MaxMusicKey,
+      Settings, Horizontal);
+  end;
 
   if VertexCount > 0 then
     Result := Video^.DrawPoly(VERTEX_QUAD_COLOR, @Vertices[0],

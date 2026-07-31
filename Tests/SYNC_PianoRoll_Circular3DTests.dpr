@@ -51,6 +51,7 @@ var
   CapturedWhiteSideMaximumZ, CapturedWhiteSideMinimumZ: Single;
   CapturedWhiteSideVertices: Integer;
   CapturedWhiteLaneVertices: Integer;
+  CapturedWhiteMaximumZ, CapturedWhiteMinimumZ: Single;
   CapturedWhiteVertices: Integer;
   FirstWhiteQuad, LastNoteQuad: Integer;
 
@@ -92,6 +93,8 @@ begin
   CapturedWhiteSideMinimumZ := MaxSingle;
   CapturedWhiteSideVertices := 0;
   CapturedWhiteLaneVertices := 0;
+  CapturedWhiteMaximumZ := -MaxSingle;
+  CapturedWhiteMinimumZ := MaxSingle;
   CapturedWhiteVertices := 0;
   FirstWhiteQuad := -1;
   LastNoteQuad := -1;
@@ -129,7 +132,11 @@ begin
     if (Abs(Vertex.R - 242 / 255.0) < 0.0001) and
       (Abs(Vertex.G - 242 / 255.0) < 0.0001) and
       (Abs(Vertex.B - 242 / 255.0) < 0.0001) then
+    begin
       Inc(CapturedWhiteVertices);
+      CapturedWhiteMinimumZ := Min(CapturedWhiteMinimumZ, Vertex.Z);
+      CapturedWhiteMaximumZ := Max(CapturedWhiteMaximumZ, Vertex.Z);
+    end;
     if (Abs(Vertex.R - 24 / 255.0) < 0.0001) and
       (Abs(Vertex.G - 24 / 255.0) < 0.0001) and
       (Abs(Vertex.B - 24 / 255.0) < 0.0001) then
@@ -319,6 +326,8 @@ begin
   Settings.ShowBeatLines := True;
   Check(DrawCircularPianoRoll3D(@Video, Data, 0.75, Settings, False),
     'restored circular guide draw failed');
+  Check(CapturedWhiteMaximumZ - CapturedWhiteMinimumZ < 0.01,
+    'vertical Type2 keyboard was no longer an annular face');
   Check((CapturedVertexCount > 0) and
     (CapturedWhiteVertices > 0) and (CapturedBlackVertices > 0),
     'circular keyboard was not generated');
@@ -365,6 +374,9 @@ begin
     'manual circular radius draw failed');
   Check(CapturedMaximumRadius > AutoMaximumRadius + 50.0,
     'manual radius did not enlarge the circular keyboard');
+  Check(CapturedWhiteMaximumZ - CapturedWhiteMinimumZ >
+    Settings.KeyLength * 0.9,
+    'horizontal Type2 keyboard did not extend along the cylinder axis');
   Check(CapturedGlowVertices = 0,
     'circular strike glow did not expire');
 
