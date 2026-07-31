@@ -15,7 +15,7 @@ type
   TGetFilterPluginTable = function: PFILTER_PLUGIN_TABLE; cdecl;
   TInitializePlugin = function(Version: DWORD): Byte; cdecl;
   TUninitializePlugin = procedure; cdecl;
-  TItemArray = array[0..37] of Pointer;
+  TItemArray = array[0..38] of Pointer;
   PItemArray = ^TItemArray;
 
 var
@@ -152,6 +152,8 @@ begin
         (PFILTER_ITEM_TRACK(Items^[19])^.Value = 0) and
         (PFILTER_ITEM_TRACK(Items^[20])^.Value = 0),
         '3D thickness defaults must be flat');
+      Check(PFILTER_ITEM_TRACK(Items^[37])^.Value = 0,
+        'radius default must use automatic sizing');
 
       FillChar(ObjectInfo, SizeOf(ObjectInfo), 0);
       FillChar(Video, SizeOf(Video), 0);
@@ -218,6 +220,15 @@ begin
       Table^.Func_Proc_Video(@Video);
       Check(CapturedPolyCalls > 0,
         '3D horizontal Type1 did not use DrawPoly');
+
+      // 3D Type2は共通の半径設定を使う円環専用DrawPoly経路へ切り替わる。
+      PFILTER_ITEM_SELECT(Items^[3])^.Value := 1;
+      PFILTER_ITEM_TRACK(Items^[37])^.Value := 0;
+      CapturedPolyCalls := 0;
+      Table^.Func_Proc_Video(@Video);
+      Check(CapturedPolyCalls > 0,
+        '3D Type2 did not use the circular DrawPoly path');
+      PFILTER_ITEM_SELECT(Items^[3])^.Value := 0;
 
       // 大プリセットのボタンでローカル値と選択中オブジェクトを同時に更新する。
       FillChar(Edit, SizeOf(Edit), 0);

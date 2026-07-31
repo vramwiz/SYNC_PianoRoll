@@ -17,6 +17,7 @@ uses
   System.Math,
   System.SysUtils,
   SYNC_PianoRoll_Colors,
+  SYNC_PianoRoll_Circular3DDisplay,
   SYNC_PianoRoll_DisplayTypes,
   SYNC_PianoRoll_Horizontal3DDisplay,
   SYNC_PianoRoll_HorizontalDisplay,
@@ -57,12 +58,13 @@ var
   Note3DThicknessItem: TFILTER_ITEM_TRACK;
   PitchFollowItem: TFILTER_ITEM_SELECT;
   PitchFollowList: array[0..3] of TFILTER_ITEM_SELECT_ITEM;
+  RadiusItem: TFILTER_ITEM_TRACK;
   OrientationItem: TFILTER_ITEM_SELECT;
   OrientationList: array[0..2] of TFILTER_ITEM_SELECT_ITEM;
   RenderDimensionItem: TFILTER_ITEM_SELECT;
   RenderDimensionList: array[0..2] of TFILTER_ITEM_SELECT_ITEM;
   StyleTypeItem: TFILTER_ITEM_SELECT;
-  StyleTypeList: array[0..1] of TFILTER_ITEM_SELECT_ITEM;
+  StyleTypeList: array[0..2] of TFILTER_ITEM_SELECT_ITEM;
   VerticalPianoRollDisplay: IPianoRollDisplay;
   ShowBeatLinesItem: TFILTER_ITEM_SELECT;
   ShowLanesItem: TFILTER_ITEM_SELECT;
@@ -82,7 +84,7 @@ var
   WhiteKeyColorItem: TFILTER_ITEM_COLOR;
   WhiteKey3DThicknessItem: TFILTER_ITEM_TRACK;
   WhiteLaneColorItem: TFILTER_ITEM_COLOR;
-  PluginItems: array[0..37] of Pointer;
+  PluginItems: array[0..38] of Pointer;
 
 function GetFilterColor(const Item: TFILTER_ITEM_COLOR;
   Alpha: Byte): TPianoRollColor;
@@ -201,6 +203,7 @@ begin
     BlackKey3DThicknessItem.Value, 0.0, 500.0);
   Settings.Note3DThickness := EnsureRange(
     Note3DThicknessItem.Value, 0.0, 500.0);
+  Settings.Radius := EnsureRange(RadiusItem.Value, 0.0, 5000.0);
   case StrikeEffectTypeItem.Value of
     Ord(psetType1):
       Settings.StrikeEffectType := psetType1;
@@ -260,14 +263,21 @@ begin
   // 未知の分類またはTypeは2D表示へ戻し、不完全な3D形状を描画しない。
   Result := (DisplayCategoryItem.Value = Ord(pdcPiano)) and
     (RenderDimensionItem.Value = Ord(prd3D)) and
-    (StyleTypeItem.Value = Ord(pstType1));
+    InRange(StyleTypeItem.Value, Ord(pstType1), Ord(pstType2));
 end;
 
 function DrawSelectedPianoRoll3D(Video: PFILTER_PROC_VIDEO;
   const Data: IPianoRollMusicData; TimeSeconds: Double;
   const Settings: TPianoRollDisplaySettings): Boolean;
 begin
-  // 方向固有の座標系と鍵盤形状は専用ユニットへ委譲する。
+  if StyleTypeItem.Value = Ord(pstType2) then
+  begin
+    Result := DrawCircularPianoRoll3D(Video, Data, TimeSeconds, Settings,
+      OrientationItem.Value = Ord(poHorizontal));
+    Exit;
+  end;
+
+  // Type1の方向固有座標系と鍵盤形状は専用ユニットへ委譲する。
   case OrientationItem.Value of
     Ord(poVertical):
       Result := DrawVerticalPianoRoll3D(Video, Data, TimeSeconds, Settings);
@@ -431,6 +441,14 @@ begin
     Note3DThicknessItem.E := 500;
     Note3DThicknessItem.Step := 1;
 
+    RadiusItem.ItemType := 'track';
+    RadiusItem.Name := '半径';
+    // 0は短辺と鍵盤寸法から外周が画面内へ収まる値を自動計算する。
+    RadiusItem.Value := 0;
+    RadiusItem.S := 0;
+    RadiusItem.E := 5000;
+    RadiusItem.Step := 1;
+
     NoteDepthList[0].Name := '平面';
     NoteDepthList[0].Value := 0;
     NoteDepthList[1].Name := '立体';
@@ -546,8 +564,10 @@ begin
 
     StyleTypeList[0].Name := 'Type1';
     StyleTypeList[0].Value := Ord(pstType1);
-    StyleTypeList[1].Name := nil;
-    StyleTypeList[1].Value := 0;
+    StyleTypeList[1].Name := 'Type2';
+    StyleTypeList[1].Value := Ord(pstType2);
+    StyleTypeList[2].Name := nil;
+    StyleTypeList[2].Value := 0;
     StyleTypeItem.ItemType := 'select';
     StyleTypeItem.Name := '表示タイプ';
     StyleTypeItem.Value := Ord(pstType1);
@@ -638,7 +658,9 @@ begin
     PluginItems[35] := @GradientColor2Item;
     // 将来Typeを増やしても既存項目のインデックスを変えないよう末尾へ置く。
     PluginItems[36] := @StrikeEffectTypeItem;
-    PluginItems[37] := nil;
+    // 円形表示以外も同じ登録順を維持できるよう、共通半径は末尾へ追加する。
+    PluginItems[37] := @RadiusItem;
+    PluginItems[38] := nil;
     Plugin.Items := @PluginItems[0];
   end;
   Result := @Plugin;

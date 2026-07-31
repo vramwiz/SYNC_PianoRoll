@@ -77,7 +77,7 @@ type
   end;
   PPluginTable = ^TPluginTable;
 
-  TItemArray = array[0..37] of Pointer;
+  TItemArray = array[0..38] of Pointer;
   PItemArray = ^TItemArray;
 
 var
@@ -111,10 +111,10 @@ begin
     Items := PItemArray(Table^.Items);
     if Items = nil then
       raise Exception.Create('plugin items are nil');
-    for I := 0 to 36 do
+    for I := 0 to 37 do
       if Items^[I] = nil then
         raise Exception.CreateFmt('plugin item %d is nil', [I]);
-    if Items^[37] <> nil then
+    if Items^[38] <> nil then
       raise Exception.Create('plugin items are not terminated');
     FileItem := PFileItem(Items^[0]);
     if string(FileItem^.ItemType) <> 'file' then
@@ -237,6 +237,10 @@ begin
       (string(PItemHeader(Items^[36])^.Name) <> '発音エフェクト') or
       (PSelectItem(Items^[36])^.Value <> 0) then
       raise Exception.Create('strike effect type item mismatch');
+    if (string(PItemHeader(Items^[37])^.ItemType) <> 'track') or
+      (string(PItemHeader(Items^[37])^.Name) <> '半径') or
+      (PTrackItem(Items^[37])^.Value <> 0) then
+      raise Exception.Create('radius item mismatch');
     if (PColorItem(Items^[24])^.R <> 242) or
       (PColorItem(Items^[24])^.G <> 242) or
       (PColorItem(Items^[24])^.B <> 242) or
@@ -315,10 +319,12 @@ begin
         PSelectItem(Items^[2])^.List)^[2].Name <> nil) then
       raise Exception.Create('render dimension list mismatch');
     if (PSelectItem(Items^[3])^.List = nil) or
-      (string(PSingleChoiceListArray(
+      (string(PSelectListArray(
         PSelectItem(Items^[3])^.List)^[0].Name) <> 'Type1') or
-      (PSingleChoiceListArray(
-        PSelectItem(Items^[3])^.List)^[1].Name <> nil) then
+      (string(PSelectListArray(
+        PSelectItem(Items^[3])^.List)^[1].Name) <> 'Type2') or
+      (PSelectListArray(
+        PSelectItem(Items^[3])^.List)^[2].Name <> nil) then
       raise Exception.Create('style type list mismatch');
     if (PSelectItem(Items^[4])^.List = nil) or
       (string(PSelectListArray(
