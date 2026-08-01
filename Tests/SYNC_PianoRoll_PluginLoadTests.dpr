@@ -8,6 +8,10 @@ uses
   Winapi.Windows,
   System.SysUtils;
 
+const
+  FILTER_FLAG_VIDEO = 1;
+  FILTER_FLAG_FILTER = 8;
+
 type
   TGetFilterPluginTable = function: Pointer; cdecl;
   TFileItem = record
@@ -105,7 +109,7 @@ begin
     if string(Table^.Name) <> 'SYNC_ピアノロール_Filter' then
       raise Exception.Create('plugin name mismatch');
     // 単体配置とInputベースへの追加で共用する映像生成登録を維持する。
-    if Table^.Flag <> 1 then
+    if Table^.Flag <> (FILTER_FLAG_VIDEO or FILTER_FLAG_FILTER) then
       raise Exception.Create('plugin is not registered as a standalone filter');
 
     Items := PItemArray(Table^.Items);

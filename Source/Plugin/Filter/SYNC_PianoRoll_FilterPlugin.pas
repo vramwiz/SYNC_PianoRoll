@@ -320,7 +320,7 @@ end;
 var
   Plugin: TFILTER_PLUGIN_TABLE = (
     // 映像生成を登録し、単体配置とInputベースへの追加で同じ描画処理を使う。
-    Flag: FILTER_FLAG_VIDEO;
+    Flag: FILTER_FLAG_VIDEO or FILTER_FLAG_FILTER;
     Name: 'SYNC_ピアノロール_Filter';
     Label_: 'SYNC';
     Information: '音楽データに同期するピアノロール描画フィルター';

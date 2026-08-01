@@ -19,12 +19,55 @@ begin
 end;
 
 var
+  CurrentFileValue: UTF8String;
+  CurrentObjectFrame: TOBJECT_LAYER_FRAME;
+  CurrentObjectHandle: OBJECT_HANDLE;
   ObjectInfo: TOBJECT_INFO;
+  SceneInfo: TSCENE_INFO;
   TimeSeconds: Double;
   Video: TFILTER_PROC_VIDEO;
+
+function MockFindObject(Layer, Frame: Integer): OBJECT_HANDLE; cdecl;
 begin
+  if (Layer = CurrentObjectFrame.Layer) and
+    (Frame = CurrentObjectFrame.StartFrame) then
+    Result := CurrentObjectHandle
+  else
+    Result := nil;
+end;
+
+function MockGetObjectLayerFrame(
+  Obj: OBJECT_HANDLE): TOBJECT_LAYER_FRAME; cdecl;
+begin
+  if Obj = CurrentObjectHandle then
+    Result := CurrentObjectFrame
+  else
+    FillChar(Result, SizeOf(Result), 0);
+end;
+
+function MockGetObjectItemValue(Obj: OBJECT_HANDLE; Effect: LPCWSTR;
+  Item: LPCWSTR): PAnsiChar; cdecl;
+begin
+  Result := nil;
+  if (Obj = CurrentObjectHandle) and (string(Effect) = '動画ファイル') and
+    (string(Item) = 'ファイル') then
+    Result := PAnsiChar(CurrentFileValue);
+end;
+
+begin
+  var EditSection: TEDIT_SECTION;
+
   FillChar(ObjectInfo, SizeOf(ObjectInfo), 0);
+  FillChar(EditSection, SizeOf(EditSection), 0);
+  FillChar(SceneInfo, SizeOf(SceneInfo), 0);
   FillChar(Video, SizeOf(Video), 0);
+  SceneInfo.Rate := 30;
+  SceneInfo.Scale := 1;
+  Video.Scene := @SceneInfo;
+  CurrentObjectHandle := @ObjectInfo;
+  EditSection.FindObject := MockFindObject;
+  EditSection.GetObjectLayerFrame := MockGetObjectLayerFrame;
+  EditSection.GetObjectItemValue := MockGetObjectItemValue;
   ObjectInfo.Flag := OBJECT_INFO_FLAG_FILTER_OBJECT;
   ObjectInfo.Time := 10.5;
   ObjectInfo.FrameS := 300;
@@ -33,10 +76,10 @@ begin
 
   Check(TryGetPianoRollTimeSeconds(@Video, TimeSeconds),
     'standalone time could not be resolved');
-  Check(Abs(TimeSeconds - 10.5) < 0.000001,
-    'object local time mismatch');
+  Check(Abs(TimeSeconds - 0.5) < 0.000001,
+    'object local frame time mismatch');
 
-  // 配置開始位置が変わっても、渡されたローカル時刻をそのまま使用する。
+  // 配置開始位置やTime値が変わっても、自身のローカルフレームだけを使用する。
   ObjectInfo.Time := 0.5;
   ObjectInfo.FrameS := 600;
   ObjectInfo.Frame := 15;
@@ -50,8 +93,16 @@ begin
   ObjectInfo.Flag := 0;
   ObjectInfo.ID := 100;
   ObjectInfo.EffectID := 200;
+  ObjectInfo.Layer := 4;
+  ObjectInfo.FrameS := 300;
+  ObjectInfo.FrameE := 599;
   ObjectInfo.Frame := 0;
   ObjectInfo.Time := 0.0;
+  CurrentObjectFrame.Layer := ObjectInfo.Layer;
+  CurrentObjectFrame.StartFrame := ObjectInfo.FrameS;
+  CurrentObjectFrame.EndFrame := ObjectInfo.FrameE;
+  CurrentFileValue := UTF8String('1920_1080_3600_30_1.syncpianoroll');
+  Video.Edit := @EditSection;
   PublishPianoRollFrame(81, 30, 1);
   Check(TryGetPianoRollTimeSeconds(@Video, TimeSeconds),
     'input time could not be resolved');
@@ -65,6 +116,17 @@ begin
     'interpolated input time could not be resolved');
   Check(Abs(TimeSeconds - (82 / 30)) < 0.000001,
     'input time interpolation mismatch');
+
+  // 専用Inputに載っていない一般メディアは、別Inputの共有値が残っていても採用しない。
+  CurrentFileValue := UTF8String('ordinary-video.mp4');
+  ObjectInfo.ID := 101;
+  ObjectInfo.EffectID := 201;
+  ObjectInfo.Frame := 15;
+  ObjectInfo.Time := 0.5;
+  Check(TryGetPianoRollTimeSeconds(@Video, TimeSeconds),
+    'ordinary media local time could not be resolved');
+  Check(Abs(TimeSeconds - 0.5) < 0.000001,
+    'ordinary media incorrectly used the shared input frame');
 
   Video.Object_ := nil;
   Check(not TryGetPianoRollTimeSeconds(@Video, TimeSeconds),

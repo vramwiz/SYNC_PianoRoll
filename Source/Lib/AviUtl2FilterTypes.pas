@@ -10,8 +10,19 @@ type
   LPCWSTR = PWideChar;
   OBJECT_HANDLE = Pointer;
 
+  TOBJECT_LAYER_FRAME = record
+    Layer: Integer;
+    StartFrame: Integer;
+    EndFrame: Integer;
+  end;
+
   PEDIT_SECTION = ^TEDIT_SECTION;
   TFilterItemButtonCallback = procedure(Edit: PEDIT_SECTION); cdecl;
+  TFindObjectFunc = function(Layer, Frame: Integer): OBJECT_HANDLE; cdecl;
+  TGetObjectLayerFrameFunc = function(
+    Obj: OBJECT_HANDLE): TOBJECT_LAYER_FRAME; cdecl;
+  TGetObjectItemValueFunc = function(Obj: OBJECT_HANDLE; Effect: LPCWSTR;
+    Item: LPCWSTR): PAnsiChar; cdecl;
   TSetObjectItemValueFunc = function(Obj: OBJECT_HANDLE; Effect: LPCWSTR;
     Item: LPCWSTR; Value: PAnsiChar): Byte; cdecl;
   TGetFocusObjectFunc = function: OBJECT_HANDLE; cdecl;
@@ -20,11 +31,11 @@ type
   TEDIT_SECTION = record
     Info: Pointer;
     CreateObjectFromAlias: Pointer;
-    FindObject: Pointer;
+    FindObject: TFindObjectFunc;
     CountObjectEffect: Pointer;
-    GetObjectLayerFrame: Pointer;
+    GetObjectLayerFrame: TGetObjectLayerFrameFunc;
     GetObjectAlias: Pointer;
-    GetObjectItemValue: Pointer;
+    GetObjectItemValue: TGetObjectItemValueFunc;
     SetObjectItemValue: TSetObjectItemValueFunc;
     MoveObject: Pointer;
     DeleteObject: Pointer;
