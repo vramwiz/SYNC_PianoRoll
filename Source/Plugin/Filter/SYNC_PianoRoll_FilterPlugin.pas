@@ -56,6 +56,7 @@ var
   NoteDepthList: array[0..2] of TFILTER_ITEM_SELECT_ITEM;
   NoteThicknessItem: TFILTER_ITEM_TRACK;
   Note3DThicknessItem: TFILTER_ITEM_TRACK;
+  NotePositionOffsetItem: TFILTER_ITEM_TRACK;
   PitchFollowItem: TFILTER_ITEM_SELECT;
   PitchFollowList: array[0..3] of TFILTER_ITEM_SELECT_ITEM;
   RadiusItem: TFILTER_ITEM_TRACK;
@@ -64,7 +65,7 @@ var
   RenderDimensionItem: TFILTER_ITEM_SELECT;
   RenderDimensionList: array[0..2] of TFILTER_ITEM_SELECT_ITEM;
   StyleTypeItem: TFILTER_ITEM_SELECT;
-  StyleTypeList: array[0..2] of TFILTER_ITEM_SELECT_ITEM;
+  StyleTypeList: array[0..3] of TFILTER_ITEM_SELECT_ITEM;
   VerticalPianoRollDisplay: IPianoRollDisplay;
   ShowBeatLinesItem: TFILTER_ITEM_SELECT;
   ShowLanesItem: TFILTER_ITEM_SELECT;
@@ -84,7 +85,7 @@ var
   WhiteKeyColorItem: TFILTER_ITEM_COLOR;
   WhiteKey3DThicknessItem: TFILTER_ITEM_TRACK;
   WhiteLaneColorItem: TFILTER_ITEM_COLOR;
-  PluginItems: array[0..38] of Pointer;
+  PluginItems: array[0..39] of Pointer;
 
 function GetFilterColor(const Item: TFILTER_ITEM_COLOR;
   Alpha: Byte): TPianoRollColor;
@@ -203,6 +204,8 @@ begin
     BlackKey3DThicknessItem.Value, 0.0, 500.0);
   Settings.Note3DThickness := EnsureRange(
     Note3DThicknessItem.Value, 0.0, 500.0);
+  Settings.NotePositionOffset := EnsureRange(
+    NotePositionOffsetItem.Value, -500.0, 500.0);
   Settings.Radius := EnsureRange(RadiusItem.Value, 0.0, 5000.0);
   case StrikeEffectTypeItem.Value of
     Ord(psetType1):
@@ -263,17 +266,18 @@ begin
   // 未知の分類またはTypeは2D表示へ戻し、不完全な3D形状を描画しない。
   Result := (DisplayCategoryItem.Value = Ord(pdcPiano)) and
     (RenderDimensionItem.Value = Ord(prd3D)) and
-    InRange(StyleTypeItem.Value, Ord(pstType1), Ord(pstType2));
+    InRange(StyleTypeItem.Value, Ord(pstType1), Ord(pstType3));
 end;
 
 function DrawSelectedPianoRoll3D(Video: PFILTER_PROC_VIDEO;
   const Data: IPianoRollMusicData; TimeSeconds: Double;
   const Settings: TPianoRollDisplaySettings): Boolean;
 begin
-  if StyleTypeItem.Value = Ord(pstType2) then
+  if StyleTypeItem.Value in [Ord(pstType2), Ord(pstType3)] then
   begin
     Result := DrawCircularPianoRoll3D(Video, Data, TimeSeconds, Settings,
-      OrientationItem.Value = Ord(poHorizontal));
+      OrientationItem.Value = Ord(poHorizontal),
+      StyleTypeItem.Value = Ord(pstType3));
     Exit;
   end;
 
@@ -441,6 +445,13 @@ begin
     Note3DThicknessItem.E := 500;
     Note3DThicknessItem.Step := 1;
 
+    NotePositionOffsetItem.ItemType := 'track';
+    NotePositionOffsetItem.Name := 'ノート位置オフセット';
+    NotePositionOffsetItem.Value := 0;
+    NotePositionOffsetItem.S := -500;
+    NotePositionOffsetItem.E := 500;
+    NotePositionOffsetItem.Step := 1;
+
     RadiusItem.ItemType := 'track';
     RadiusItem.Name := '半径';
     // 0は短辺と鍵盤寸法から外周が画面内へ収まる値を自動計算する。
@@ -566,8 +577,10 @@ begin
     StyleTypeList[0].Value := Ord(pstType1);
     StyleTypeList[1].Name := 'Type2';
     StyleTypeList[1].Value := Ord(pstType2);
-    StyleTypeList[2].Name := nil;
-    StyleTypeList[2].Value := 0;
+    StyleTypeList[2].Name := 'Type3';
+    StyleTypeList[2].Value := Ord(pstType3);
+    StyleTypeList[3].Name := nil;
+    StyleTypeList[3].Value := 0;
     StyleTypeItem.ItemType := 'select';
     StyleTypeItem.Name := '表示タイプ';
     StyleTypeItem.Value := Ord(pstType1);
@@ -637,30 +650,30 @@ begin
     PluginItems[14] := @PitchFollowItem;
     PluginItems[15] := @KeyLengthItem;
     PluginItems[16] := @KeyThicknessItem;
-    PluginItems[17] := @NoteThicknessItem;
-    PluginItems[18] := @WhiteKey3DThicknessItem;
-    PluginItems[19] := @BlackKey3DThicknessItem;
-    PluginItems[20] := @Note3DThicknessItem;
-    PluginItems[21] := @ShowLanesItem;
-    PluginItems[22] := @ShowBeatLinesItem;
-    PluginItems[23] := @BeatsPerMeasureItem;
-    PluginItems[24] := @WhiteKeyColorItem;
-    PluginItems[25] := @BlackKeyColorItem;
-    PluginItems[26] := @WhiteLaneColorItem;
-    PluginItems[27] := @BlackLaneColorItem;
-    PluginItems[28] := @BeatLineColorItem;
-    PluginItems[29] := @MeasureLineColorItem;
-    PluginItems[30] := @StrikeLineColorItem;
-    PluginItems[31] := @TrackColorModeItem;
-    PluginItems[32] := @SingleTrackColorItem;
-    PluginItems[33] := @NoteDepthItem;
-    PluginItems[34] := @GradientColor1Item;
-    PluginItems[35] := @GradientColor2Item;
-    // 将来Typeを増やしても既存項目のインデックスを変えないよう末尾へ置く。
-    PluginItems[36] := @StrikeEffectTypeItem;
-    // 円形表示以外も同じ登録順を維持できるよう、共通半径は末尾へ追加する。
-    PluginItems[37] := @RadiusItem;
-    PluginItems[38] := nil;
+    // 鍵盤との位置関係を調整する項目は、鍵盤寸法の直後へまとめる。
+    PluginItems[17] := @RadiusItem;
+    PluginItems[18] := @NotePositionOffsetItem;
+    PluginItems[19] := @NoteThicknessItem;
+    PluginItems[20] := @WhiteKey3DThicknessItem;
+    PluginItems[21] := @BlackKey3DThicknessItem;
+    PluginItems[22] := @Note3DThicknessItem;
+    PluginItems[23] := @ShowLanesItem;
+    PluginItems[24] := @ShowBeatLinesItem;
+    PluginItems[25] := @BeatsPerMeasureItem;
+    PluginItems[26] := @WhiteKeyColorItem;
+    PluginItems[27] := @BlackKeyColorItem;
+    PluginItems[28] := @WhiteLaneColorItem;
+    PluginItems[29] := @BlackLaneColorItem;
+    PluginItems[30] := @BeatLineColorItem;
+    PluginItems[31] := @MeasureLineColorItem;
+    PluginItems[32] := @StrikeLineColorItem;
+    PluginItems[33] := @TrackColorModeItem;
+    PluginItems[34] := @SingleTrackColorItem;
+    PluginItems[35] := @NoteDepthItem;
+    PluginItems[36] := @GradientColor1Item;
+    PluginItems[37] := @GradientColor2Item;
+    PluginItems[38] := @StrikeEffectTypeItem;
+    PluginItems[39] := nil;
     Plugin.Items := @PluginItems[0];
   end;
   Result := @Plugin;

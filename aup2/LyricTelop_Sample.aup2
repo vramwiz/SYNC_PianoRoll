@@ -11,12 +11,12 @@ video.height=1080
 video.rate=30
 video.scale=1
 audio.rate=44100
-cursor.frame=705
+cursor.frame=719
 cursor.layer=3
 preview.frame=0
-display.frame=480
+display.frame=638
 display.layer=0
-display.zoom=10000
+display.zoom=40000
 display.order=0
 display.camera=
 display.grid.x=16,-16
@@ -109,15 +109,17 @@ Group2=1
 [2.2]
 effect.name=SYNC_歌詞テロップ_Filter
 曲同期設定=
+曲全体データ=
 歌詞=[漢字](かんじ)を「読(よ)む」
 音楽ファイル=C:\Users\vramw\Music\magnific_aQo5nq8fSh.mp3
 トラック (-1=全て)=-1
+音楽オフセット (秒)=0.00
 配置モード=1行配置
 同期演出=通常カラオケ
 表示設定=
 プリセット=プリセット1
-プリセット保存=
-プリセット読込=
+保存=
+読込=
 同期アニメーション=なし
 開始演出=なし
 開始演出時間 (秒)=0.30
@@ -129,11 +131,11 @@ effect.name=SYNC_歌詞テロップ_Filter
 [3]
 layer=2
 focus=1
-frame=677,1030
+frame=677,1072
 name=[漢字](かんじ)を「読(よ)む」
 [3.0]
 effect.name=動画ファイル
-再生位置=2.134,13.934,再生範囲,0
+再生位置=0.734,13.934,再生範囲,0
 再生速度=100.00
 ファイル=D:\DelphiProg\test\SYNC_Lyric\1920_1080_3600_30_1.synclyrics
 トラック=0
@@ -162,15 +164,18 @@ Group2=1
 [3.2]
 effect.name=SYNC_歌詞テロップ_Filter
 曲同期設定=
-歌詞=[漢字](かんじ)を「読(よ)む」
+曲全体データ=SLS1|L,1,1,0,-1,0.5,0,53,7,38,0,W+aYn+epul0o44G744GX44Ge44KJKeOCkuimi+S4iuOBkuOBpg==,,,0|L,3,1,0,-1,0.5,8,66,38,51,6,M+ihjOebrg==,,,0|L,2,2,0,-1,0.5,21,116,51,101,9,W+WQm10o44GN44G/KeOBruWjsOOCkuaOouOBl+OBpuOCiw==,,U0wyfEU3RjkxNEVDfDB8MCwwLDU5NzUyMDQ3NkY3NDY4Njk2MzIwNTU0OSw1OTc1MjA0NzZGNzQ2
+ODY5NjMyMDU1NDksOTYsNDIsMSwxLEZGRkZGRixGRkZGMDAsMCwwLDA=,0
+歌詞=
 音楽ファイル=C:\Users\vramw\Music\musicxml\ナイトパレードオンザスカイplus2\itako1.mscz
 トラック (-1=全て)=-1
+音楽オフセット (秒)=0.00
 配置モード=1行配置
 同期演出=通常カラオケ
 表示設定=
 プリセット=プリセット2
-プリセット保存=
-プリセット読込=
+保存=
+読込=
 同期アニメーション=なし
 開始演出=フェード
 開始演出時間 (秒)=0.30

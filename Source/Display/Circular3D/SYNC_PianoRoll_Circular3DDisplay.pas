@@ -1,6 +1,6 @@
 unit SYNC_PianoRoll_Circular3DDisplay;
 
-// 音階を円周、時間をZ軸へ割り当てる3D Type2の円環鍵盤とノートを生成する。
+// 音階を円周、時間をZ軸へ割り当てる3D Type2／Type3の円環鍵盤とノートを生成する。
 
 interface
 
@@ -11,9 +11,11 @@ uses
 
 function DrawCircularPianoRoll3D(Video: PFILTER_PROC_VIDEO;
   const Data: IPianoRollMusicData; TimeSeconds: Double;
-  const Settings: TPianoRollDisplaySettings; Horizontal: Boolean): Boolean;
+  const Settings: TPianoRollDisplaySettings; Horizontal,
+  Outward: Boolean): Boolean;
 function ResolveCircularPianoRollRadius(Width, Height: Integer;
-  const Settings: TPianoRollDisplaySettings): Double;
+  const Settings: TPianoRollDisplaySettings;
+  ReserveOuterMargin: Boolean): Double;
 
 implementation
 
@@ -87,17 +89,27 @@ begin
 end;
 
 function ResolveCircularPianoRollRadius(Width, Height: Integer;
-  const Settings: TPianoRollDisplaySettings): Double;
+  const Settings: TPianoRollDisplaySettings;
+  ReserveOuterMargin: Boolean): Double;
 var
-  AutoRadius, HalfKeyLength, MaximumFittingRadius, ShortSide: Double;
+  AutoRadius, HalfKeyLength, MaximumFittingRadius, OuterEffectMargin,
+    ShortSide: Double;
 begin
   if Settings.Radius > 0.0 then
     Exit(Settings.Radius);
 
   ShortSide := Max(1.0, Min(Width, Height));
   HalfKeyLength := Max(0.0, Settings.KeyLength) * 0.5;
-  // 初期外周を短辺の48%以内へ置き、正面表示で円環全体を確認できる余白を残す。
-  MaximumFittingRadius := Max(1.0, ShortSide * 0.48 - HalfKeyLength);
+  OuterEffectMargin := Abs(Settings.NotePositionOffset);
+  if ReserveOuterMargin then
+    // 外向き円環または円筒の厚みと打鍵グローまで短辺の48%以内へ収める。
+    OuterEffectMargin := Max(OuterEffectMargin, Max(
+      Max(Max(0.0, Settings.Note3DThickness),
+        Max(10.0, Max(0.0, Settings.KeyLength) * 0.13)),
+      Max(4.0, Max(0.0, Settings.WhiteKey3DThickness)) +
+        Max(2.0, Max(0.0, Settings.BlackKey3DThickness))));
+  MaximumFittingRadius := Max(1.0,
+    ShortSide * 0.48 - HalfKeyLength - OuterEffectMargin);
   AutoRadius := Max(HalfKeyLength + 4.0, ShortSide * 0.30);
   Result := Max(HalfKeyLength + 1.0,
     Min(AutoRadius, MaximumFittingRadius));
@@ -219,38 +231,60 @@ end;
 
 procedure AppendExtrudedCylindricalRibbon(var Vertices: TVertexColorArray;
   var VertexCount: Integer; SurfaceRadius, Angle0, Angle1, Z0, Z1,
-  Thickness: Double; const Color: TPianoRollColor);
+  Thickness: Double; GrowOutward: Boolean; const Color: TPianoRollColor);
 var
-  InnerRadius: Double;
+  InnerRadius, OuterRadius: Double;
   EndShade, SideShade: TPianoRollColor;
 begin
   Thickness := Max(0.0, Thickness);
   if Thickness <= 0.0 then
   begin
-    AppendCylindricalRibbon(Vertices, VertexCount, SurfaceRadius,
-      Angle0, Angle1, Z0, Z1, Color);
+    // 厚み0でも表示側へ法線を向け、外向き平面ノートを背面扱いにしない。
+    if GrowOutward then
+      AppendCylindricalRibbon(Vertices, VertexCount, SurfaceRadius,
+        Angle1, Angle0, Z0, Z1, Color)
+    else
+      AppendCylindricalRibbon(Vertices, VertexCount, SurfaceRadius,
+        Angle0, Angle1, Z0, Z1, Color);
     Exit;
   end;
 
-  InnerRadius := Max(1.0, SurfaceRadius - Thickness);
-  if InnerRadius >= SurfaceRadius then
+  if GrowOutward then
+  begin
+    InnerRadius := SurfaceRadius;
+    OuterRadius := SurfaceRadius + Thickness;
+  end
+  else
+  begin
+    InnerRadius := Max(1.0, SurfaceRadius - Thickness);
+    OuterRadius := SurfaceRadius;
+  end;
+  if InnerRadius >= OuterRadius then
     Exit;
   SideShade := ShadeColor(Color, 0.62);
   EndShade := ShadeColor(Color, 0.48);
 
-  // 外周面と4つの端面を先に閉じ、中心側の主面を最後に重ねる。
-  AppendCylindricalRibbon(Vertices, VertexCount, SurfaceRadius,
-    Angle1, Angle0, Z0, Z1, SideShade);
-  AppendRadialSide(Vertices, VertexCount, InnerRadius, SurfaceRadius,
+  // 厚みの背面と4つの端面を先に閉じ、表示側の主面を最後に重ねる。
+  if GrowOutward then
+    AppendCylindricalRibbon(Vertices, VertexCount, InnerRadius,
+      Angle0, Angle1, Z0, Z1, SideShade)
+  else
+    AppendCylindricalRibbon(Vertices, VertexCount, OuterRadius,
+      Angle1, Angle0, Z0, Z1, SideShade);
+  AppendRadialSide(Vertices, VertexCount, InnerRadius, OuterRadius,
     Angle0, Z0, Z1, SideShade);
-  AppendRadialSide(Vertices, VertexCount, SurfaceRadius, InnerRadius,
+  AppendRadialSide(Vertices, VertexCount, OuterRadius, InnerRadius,
     Angle1, Z0, Z1, SideShade);
-  AppendAnnularSector(Vertices, VertexCount, InnerRadius, SurfaceRadius,
+  AppendAnnularSector(Vertices, VertexCount, InnerRadius, OuterRadius,
     Angle1, Angle0, Z0, EndShade);
-  AppendAnnularSector(Vertices, VertexCount, InnerRadius, SurfaceRadius,
+  AppendAnnularSector(Vertices, VertexCount, InnerRadius, OuterRadius,
     Angle0, Angle1, Z1, EndShade);
-  AppendCylindricalRibbon(Vertices, VertexCount, InnerRadius,
-    Angle0, Angle1, Z0, Z1, Color);
+  if GrowOutward then
+    AppendCylindricalRibbon(Vertices, VertexCount, OuterRadius,
+      Angle1, Angle0, Z0, Z1, Color)
+  else
+    AppendCylindricalRibbon(Vertices, VertexCount, InnerRadius,
+      Angle0, Angle1, Z0, Z1, Color);
 end;
 
 procedure AppendConnectedKeyboardBand(var Vertices: TVertexColorArray;
@@ -305,7 +339,7 @@ procedure AppendActiveCircularKeys(var Vertices: TVertexColorArray;
   PitchSpan, WhiteFrontZ, BlackFrontZ: Double;
   LowestKey, HighestKey, MinTrack, MaxTrack, MinMusicKey,
   MaxMusicKey: Integer; const Settings: TPianoRollDisplaySettings;
-  Horizontal, DrawBlackKeys: Boolean);
+  Horizontal, BlackKeysOutside, DrawBlackKeys: Boolean);
 var
   Angle0, Angle1, KeyInnerRadius, KeyOuterRadius: Double;
   Color: TPianoRollColor;
@@ -330,8 +364,16 @@ begin
         CenterPitch, PitchSpan, Horizontal);
       Angle1 := PitchToAngle(GetPianoKeyPitchCenter(Note.Key) + 0.31,
         CenterPitch, PitchSpan, Horizontal);
-      KeyInnerRadius := Radius - Max(0.0, Settings.KeyLength) * 0.50;
-      KeyOuterRadius := Radius + Max(0.0, Settings.KeyLength) * 0.12;
+      if BlackKeysOutside then
+      begin
+        KeyInnerRadius := Radius - Max(0.0, Settings.KeyLength) * 0.12;
+        KeyOuterRadius := Radius + Max(0.0, Settings.KeyLength) * 0.50;
+      end
+      else
+      begin
+        KeyInnerRadius := Radius - Max(0.0, Settings.KeyLength) * 0.50;
+        KeyOuterRadius := Radius + Max(0.0, Settings.KeyLength) * 0.12;
+      end;
       AppendAnnularSector(Vertices, VertexCount, KeyInnerRadius,
         KeyOuterRadius, Angle0, Angle1, BlackFrontZ - 0.1, Color);
     end
@@ -347,46 +389,55 @@ begin
   end;
 end;
 
-procedure AppendCircularGlowPatch(var Vertices: TVertexColorArray;
-  var VertexCount: Integer; CenterRadius, CenterAngle, RadiusExtent,
-  AngleExtent, Z: Double; PeakAlpha: Integer;
+procedure AppendRadialGlowPlane3D(var Vertices: TVertexColorArray;
+  var VertexCount: Integer; CenterX, CenterY, CenterZ,
+  AxisUX, AxisUY, AxisUZ, AxisVX, AxisVY, AxisVZ,
+  RadiusU, RadiusV: Double; PeakAlpha: Integer;
   const Color: TPianoRollColor);
 var
-  A0, A1, NA0, NA1, NR0, NR1, R0, R1: Double;
   C00, C01, C10, C11: TPianoRollColor;
-  AngleGrid, RadiusGrid: Integer;
+  GridU, GridV: Integer;
+  U0, U1, V0, V1: Double;
 begin
-  for RadiusGrid := -GLOW_GRID_HALF to GLOW_GRID_HALF - 1 do
-    for AngleGrid := -GLOW_GRID_HALF to GLOW_GRID_HALF - 1 do
+  for GridV := -GLOW_GRID_HALF to GLOW_GRID_HALF - 1 do
+    for GridU := -GLOW_GRID_HALF to GLOW_GRID_HALF - 1 do
     begin
-      if VertexCount div 4 >= MAX_QUAD_COUNT then
+      if VertexCount div 4 >= MAX_QUAD_COUNT - 1 then
         Exit;
-      NR0 := RadiusGrid / GLOW_GRID_HALF;
-      NR1 := (RadiusGrid + 1) / GLOW_GRID_HALF;
-      NA0 := AngleGrid / GLOW_GRID_HALF;
-      NA1 := (AngleGrid + 1) / GLOW_GRID_HALF;
-      C00 := GetGlowVertexColor(Color, NR0, NA0, PeakAlpha);
-      C01 := GetGlowVertexColor(Color, NR0, NA1, PeakAlpha);
-      C10 := GetGlowVertexColor(Color, NR1, NA0, PeakAlpha);
-      C11 := GetGlowVertexColor(Color, NR1, NA1, PeakAlpha);
+      U0 := GridU / GLOW_GRID_HALF;
+      U1 := (GridU + 1) / GLOW_GRID_HALF;
+      V0 := GridV / GLOW_GRID_HALF;
+      V1 := (GridV + 1) / GLOW_GRID_HALF;
+      C00 := GetGlowVertexColor(Color, U0, V0, PeakAlpha);
+      C01 := GetGlowVertexColor(Color, U0, V1, PeakAlpha);
+      C10 := GetGlowVertexColor(Color, U1, V0, PeakAlpha);
+      C11 := GetGlowVertexColor(Color, U1, V1, PeakAlpha);
       if (C00.A = 0) and (C01.A = 0) and
         (C10.A = 0) and (C11.A = 0) then
         Continue;
-
-      EnsureVertexCapacity(Vertices, VertexCount + 4);
-      R0 := Max(1.0, CenterRadius + NR0 * RadiusExtent);
-      R1 := Max(1.0, CenterRadius + NR1 * RadiusExtent);
-      A0 := CenterAngle + NA0 * AngleExtent;
-      A1 := CenterAngle + NA1 * AngleExtent;
+      EnsureVertexCapacity(Vertices, VertexCount + 8);
       SetVertex(Vertices[VertexCount],
-        Cos(A0) * R0, Sin(A0) * R0, Z, C00);
+        CenterX + AxisUX * U0 * RadiusU + AxisVX * V0 * RadiusV,
+        CenterY + AxisUY * U0 * RadiusU + AxisVY * V0 * RadiusV,
+        CenterZ + AxisUZ * U0 * RadiusU + AxisVZ * V0 * RadiusV, C00);
       SetVertex(Vertices[VertexCount + 1],
-        Cos(A1) * R0, Sin(A1) * R0, Z, C01);
+        CenterX + AxisUX * U0 * RadiusU + AxisVX * V1 * RadiusV,
+        CenterY + AxisUY * U0 * RadiusU + AxisVY * V1 * RadiusV,
+        CenterZ + AxisUZ * U0 * RadiusU + AxisVZ * V1 * RadiusV, C01);
       SetVertex(Vertices[VertexCount + 2],
-        Cos(A1) * R1, Sin(A1) * R1, Z, C11);
+        CenterX + AxisUX * U1 * RadiusU + AxisVX * V1 * RadiusV,
+        CenterY + AxisUY * U1 * RadiusU + AxisVY * V1 * RadiusV,
+        CenterZ + AxisUZ * U1 * RadiusU + AxisVZ * V1 * RadiusV, C11);
       SetVertex(Vertices[VertexCount + 3],
-        Cos(A0) * R1, Sin(A0) * R1, Z, C10);
-      Inc(VertexCount, 4);
+        CenterX + AxisUX * U1 * RadiusU + AxisVX * V0 * RadiusV,
+        CenterY + AxisUY * U1 * RadiusU + AxisVY * V0 * RadiusV,
+        CenterZ + AxisUZ * U1 * RadiusU + AxisVZ * V0 * RadiusV, C10);
+      // 反対側から見ても消えないよう、同じ面を逆巻きでも追加する。
+      Vertices[VertexCount + 4] := Vertices[VertexCount];
+      Vertices[VertexCount + 5] := Vertices[VertexCount + 3];
+      Vertices[VertexCount + 6] := Vertices[VertexCount + 2];
+      Vertices[VertexCount + 7] := Vertices[VertexCount + 1];
+      Inc(VertexCount, 8);
     end;
 end;
 
@@ -397,9 +448,10 @@ procedure AppendCircularStrikeEffects(var Vertices: TVertexColorArray;
   MaxMusicKey: Integer; const Settings: TPianoRollDisplaySettings;
   Horizontal: Boolean);
 var
-  AngleExtent, CenterAngle, Elapsed, RadiusExtent, Strength: Double;
+  CenterAngle, CenterX, CenterY, Elapsed, GlowExtent, Strength,
+    TangentExtent: Double;
   Color: TPianoRollColor;
-  I, PeakAlpha: Integer;
+  GlowPlaneAlpha, I, PeakAlpha: Integer;
   Note: TPianoRollNoteData;
 begin
   case Settings.StrikeEffectType of
@@ -422,24 +474,42 @@ begin
 
     Strength := 1.0 - Elapsed / STRIKE_GLOW_DURATION;
     PeakAlpha := Round(255 * Sqrt(Strength));
-    RadiusExtent := Max(10.0, Settings.KeyLength *
+    GlowExtent := Max(10.0, Settings.KeyLength *
       (0.08 + (1.0 - Strength) * 0.05));
-    AngleExtent := 2.0 * Pi / PitchSpan *
-      (0.38 + (1.0 - Strength) * 0.18);
     CenterAngle := PitchToAngle(GetPianoKeyPitchCenter(Note.Key),
       CenterPitch, PitchSpan, Horizontal);
+    TangentExtent := InnerRadius * 2.0 * Pi / PitchSpan *
+      (0.38 + (1.0 - Strength) * 0.18);
+    CenterX := Cos(CenterAngle) * InnerRadius;
+    CenterY := Sin(CenterAngle) * InnerRadius;
     Color := ResolvePianoRollTrackColor(Note.TrackIndex, Note.Key,
       MinTrack, MaxTrack, MinMusicKey, MaxMusicKey, Settings.TrackColorMode,
       Settings.SingleTrackColor, Settings.GradientColor1,
       Settings.GradientColor2, Settings.Palette);
-    AppendCircularGlowPatch(Vertices, VertexCount, InnerRadius,
-      CenterAngle, RadiusExtent, AngleExtent, EffectZ, PeakAlpha, Color);
+    GlowPlaneAlpha := Round(PeakAlpha * 0.55);
+    // 円周位置ごとの接線・半径・時間軸から、直交する3つの発光面を作る。
+    AppendRadialGlowPlane3D(Vertices, VertexCount,
+      CenterX, CenterY, EffectZ,
+      -Sin(CenterAngle), Cos(CenterAngle), 0.0,
+      Cos(CenterAngle), Sin(CenterAngle), 0.0,
+      TangentExtent, GlowExtent, GlowPlaneAlpha, Color);
+    AppendRadialGlowPlane3D(Vertices, VertexCount,
+      CenterX, CenterY, EffectZ,
+      -Sin(CenterAngle), Cos(CenterAngle), 0.0,
+      0.0, 0.0, 1.0,
+      TangentExtent, GlowExtent, GlowPlaneAlpha, Color);
+    AppendRadialGlowPlane3D(Vertices, VertexCount,
+      CenterX, CenterY, EffectZ,
+      Cos(CenterAngle), Sin(CenterAngle), 0.0,
+      0.0, 0.0, 1.0,
+      GlowExtent, GlowExtent, GlowPlaneAlpha, Color);
   end;
 end;
 
 procedure AppendCircularLanes(var Vertices: TVertexColorArray;
   var VertexCount: Integer; Radius, CenterPitch, PitchSpan, FutureZ: Double;
-  LowestKey, HighestKey: Integer; const Settings: TPianoRollDisplaySettings);
+  LowestKey, HighestKey: Integer; const Settings: TPianoRollDisplaySettings;
+  FaceOutward: Boolean);
 var
   Angle0, Angle1, HalfWidth: Double;
   Color: TPianoRollColor;
@@ -463,8 +533,13 @@ begin
       Color := Settings.Palette.BlackLane
     else
       Color := Settings.Palette.WhiteLane;
-    AppendCylindricalRibbon(Vertices, VertexCount, Radius, Angle0, Angle1,
-      FutureZ, 0.0, Color);
+    // 内周表示と外周表示で頂点順を反転し、表示側へ面の法線を向ける。
+    if FaceOutward then
+      AppendCylindricalRibbon(Vertices, VertexCount, Radius, Angle1, Angle0,
+        FutureZ, 0.0, Color)
+    else
+      AppendCylindricalRibbon(Vertices, VertexCount, Radius, Angle0, Angle1,
+        FutureZ, 0.0, Color);
   end;
 end;
 
@@ -505,23 +580,39 @@ end;
 
 procedure AppendHorizontalCircularKeyboard(var Vertices: TVertexColorArray;
   var VertexCount: Integer; Radius, CenterPitch, PitchSpan: Double;
-  LowestKey, HighestKey: Integer; const Settings: TPianoRollDisplaySettings);
+  LowestKey, HighestKey: Integer; const Settings: TPianoRollDisplaySettings;
+  FaceOutward: Boolean);
 var
-  Angle0, Angle1, BlackThickness, KeyLength, WhiteRadius,
-  WhiteThickness: Double;
+  Angle0, Angle1, BlackThickness, InnerRadius, KeyLength, OuterRadius,
+  WhiteSurfaceRadius, WhiteThickness: Double;
   Key: Integer;
 begin
   KeyLength := Max(1.0, Settings.KeyLength);
   WhiteThickness := Max(4.0, Max(0.0, Settings.WhiteKey3DThickness));
   BlackThickness := Max(2.0, Max(0.0, Settings.BlackKey3DThickness));
-  WhiteRadius := Max(1.0, Radius - WhiteThickness);
+  if FaceOutward then
+  begin
+    InnerRadius := Radius;
+    OuterRadius := Radius + WhiteThickness;
+    WhiteSurfaceRadius := OuterRadius;
+  end
+  else
+  begin
+    InnerRadius := Max(1.0, Radius - WhiteThickness);
+    OuterRadius := Radius;
+    WhiteSurfaceRadius := InnerRadius;
+  end;
 
-  // 円筒の外殻と前後端を閉じ、直線鍵盤の左右端を接続した帯を作る。
-  AppendCylindricalRibbon(Vertices, VertexCount, Radius, 2.0 * Pi, 0.0,
-    0.0, KeyLength, ShadeColor(Settings.Palette.WhiteKey, 0.55));
-  AppendAnnularSector(Vertices, VertexCount, WhiteRadius, Radius,
+  // 表示面と反対側の殻および前後端を閉じ、音階方向を接続した円筒帯を作る。
+  if FaceOutward then
+    AppendCylindricalRibbon(Vertices, VertexCount, InnerRadius, 0.0,
+      2.0 * Pi, 0.0, KeyLength, ShadeColor(Settings.Palette.WhiteKey, 0.55))
+  else
+    AppendCylindricalRibbon(Vertices, VertexCount, OuterRadius, 2.0 * Pi,
+      0.0, 0.0, KeyLength, ShadeColor(Settings.Palette.WhiteKey, 0.55));
+  AppendAnnularSector(Vertices, VertexCount, InnerRadius, OuterRadius,
     2.0 * Pi, 0.0, 0.0, ShadeColor(Settings.Palette.WhiteKey, 0.48));
-  AppendAnnularSector(Vertices, VertexCount, WhiteRadius, Radius,
+  AppendAnnularSector(Vertices, VertexCount, InnerRadius, OuterRadius,
     0.0, 2.0 * Pi, KeyLength, ShadeColor(Settings.Palette.WhiteKey, 0.42));
 
   // 白鍵の長さは円筒の奥行き方向へ割り当てる。
@@ -533,11 +624,11 @@ begin
         CenterPitch, PitchSpan, True);
       Angle1 := PitchToAngle(GetPianoKeyPitchCenter(Key) + 0.48,
         CenterPitch, PitchSpan, True);
-      AppendCylindricalRibbon(Vertices, VertexCount, WhiteRadius,
+      AppendCylindricalRibbon(Vertices, VertexCount, WhiteSurfaceRadius,
         Angle0, Angle1, 0.0, KeyLength, Settings.Palette.WhiteKey);
     end;
 
-  // 黒鍵は中心側へ押し出し、白鍵より短い円筒面として重ねる。
+  // 黒鍵は白鍵の表示面から同じ方向へ押し出し、短い円筒面として重ねる。
   for Key := LowestKey to HighestKey do
     if IsPianoRollKeyVisible(Key, Settings.KeyboardType) and
       IsPianoBlackKey(Key) then
@@ -546,22 +637,31 @@ begin
         CenterPitch, PitchSpan, True);
       Angle1 := PitchToAngle(GetPianoKeyPitchCenter(Key) + 0.31,
         CenterPitch, PitchSpan, True);
-      AppendExtrudedCylindricalRibbon(Vertices, VertexCount, WhiteRadius,
-        Angle0, Angle1, 0.0, KeyLength * 0.62, BlackThickness,
-        Settings.Palette.BlackKey);
+      if FaceOutward then
+        // 横用の音階角度は減少方向なので、外周面の法線を保つため入力順も反転する。
+        AppendExtrudedCylindricalRibbon(Vertices, VertexCount,
+          WhiteSurfaceRadius, Angle1, Angle0, 0.0, KeyLength * 0.62,
+          BlackThickness, True, Settings.Palette.BlackKey)
+      else
+        AppendExtrudedCylindricalRibbon(Vertices, VertexCount,
+          WhiteSurfaceRadius, Angle0, Angle1, 0.0, KeyLength * 0.62,
+          BlackThickness, False, Settings.Palette.BlackKey);
     end;
 end;
 
 function DrawCircularPianoRoll3D(Video: PFILTER_PROC_VIDEO;
   const Data: IPianoRollMusicData; TimeSeconds: Double;
-  const Settings: TPianoRollDisplaySettings; Horizontal: Boolean): Boolean;
+  const Settings: TPianoRollDisplaySettings; Horizontal,
+  Outward: Boolean): Boolean;
 var
   Angle0, Angle1, CenterPitch, DisplayTime, EndSeconds, FutureTime: Double;
   BackZ, BlackFrontZ, FrontZ, InnerRadius, KeyHalfWidth, OuterRadius: Double;
-  PastTime, PitchSpan, Radius, Time0, Time1, TimeAxisLength: Double;
+  GuideSurfaceRadius, NoteSurfaceRadius, PastTime, PitchSpan, Radius,
+    StrikeEffectZ, Time0, Time1, TimeAxisLength, WhiteSurfaceRadius: Double;
   Color: TPianoRollColor;
   Height, HighestKey, I, Key, LowestKey: Integer;
-  HorizontalKeyboard: Boolean;
+  HorizontalKeyboard, KeyboardFacesOutward, NoteFacesOutward,
+    UseOuterSide: Boolean;
   MaxMusicKey, MaxTrack, MinMusicKey, MinTrack: Integer;
   Note: TPianoRollNoteData;
   Vertices: TVertexColorArray;
@@ -571,8 +671,25 @@ begin
   if (Video = nil) or (Video^.Object_ = nil) or
     not Assigned(Video^.DrawPoly) or not Assigned(Data) then
     Exit;
-  HorizontalKeyboard := Horizontal;
-  // 今回の横分岐は鍵盤だけに適用し、ノート等は縦Type2の配置を維持する。
+  KeyboardFacesOutward := Horizontal and Outward;
+  // 設定上のType2横とType3縦だけ表示を交換する。Type3横は外向き円筒へ分岐する。
+  if Horizontal and not Outward then
+  begin
+    HorizontalKeyboard := False;
+    UseOuterSide := True;
+  end
+  else if not Horizontal and Outward then
+  begin
+    HorizontalKeyboard := True;
+    UseOuterSide := False;
+  end
+  else
+  begin
+    HorizontalKeyboard := Horizontal;
+    UseOuterSide := Outward and not HorizontalKeyboard;
+  end;
+  NoteFacesOutward := UseOuterSide or KeyboardFacesOutward;
+  // 円環側の音階角度は縦配置へ固定し、円筒鍵盤だけ専用の横角度を内部で使用する。
   Horizontal := False;
   Width := Video^.Object_^.Width;
   Height := Video^.Object_^.Height;
@@ -587,9 +704,32 @@ begin
     Settings.KeyboardType, LowestKey, HighestKey);
   GetPianoRollNoteRanges(Data, MinTrack, MaxTrack, MinMusicKey, MaxMusicKey);
 
-  Radius := ResolveCircularPianoRollRadius(Width, Height, Settings);
+  Radius := ResolveCircularPianoRollRadius(Width, Height, Settings,
+    UseOuterSide or KeyboardFacesOutward);
   InnerRadius := Max(1.0, Radius - Max(0.0, Settings.KeyLength) * 0.5);
   OuterRadius := Radius + Max(0.0, Settings.KeyLength) * 0.5;
+  if HorizontalKeyboard then
+  begin
+    // 円筒鍵盤は鍵盤長ではなく白鍵3D厚みが半径方向の表面位置を決める。
+    // オフセット0のノート基準を、Type3縦は内周、Type3横は外周の白鍵面へ揃える。
+    if KeyboardFacesOutward then
+      WhiteSurfaceRadius := Radius +
+        Max(4.0, Max(0.0, Settings.WhiteKey3DThickness))
+    else
+      WhiteSurfaceRadius := Radius -
+        Max(4.0, Max(0.0, Settings.WhiteKey3DThickness));
+    GuideSurfaceRadius := Max(1.0, WhiteSurfaceRadius);
+  end
+  else if UseOuterSide then
+    GuideSurfaceRadius := OuterRadius
+  else
+    GuideSurfaceRadius := InnerRadius;
+  if NoteFacesOutward then
+    NoteSurfaceRadius := Max(1.0,
+      GuideSurfaceRadius + Settings.NotePositionOffset)
+  else
+    NoteSurfaceRadius := Max(1.0,
+      GuideSurfaceRadius - Settings.NotePositionOffset);
   CenterPitch := GetPianoKeyPitchCenter(
     EnsureRange(Settings.CenterNote, LowestKey, HighestKey));
   PitchSpan := Max(1.0,
@@ -604,11 +744,11 @@ begin
   VertexCount := 0;
   SetLength(Vertices, 1024);
 
-  AppendCircularLanes(Vertices, VertexCount, InnerRadius, CenterPitch,
+  AppendCircularLanes(Vertices, VertexCount, GuideSurfaceRadius, CenterPitch,
     PitchSpan, -FutureTime / DisplayTime * TimeAxisLength,
-    LowestKey, HighestKey, Settings);
+    LowestKey, HighestKey, Settings, NoteFacesOutward);
   AppendCircularBeatRings(Vertices, VertexCount, Data, TimeSeconds,
-    FutureTime, DisplayTime, TimeAxisLength, InnerRadius, Settings);
+    FutureTime, DisplayTime, TimeAxisLength, GuideSurfaceRadius, Settings);
 
   // ノートを先に追加し、発音位置の円環鍵盤が前面へ重なる描画順を維持する。
   for I := 0 to Data.NoteCount - 1 do
@@ -631,16 +771,21 @@ begin
       MinTrack, MaxTrack, MinMusicKey, MaxMusicKey, Settings.TrackColorMode,
       Settings.SingleTrackColor, Settings.GradientColor1,
       Settings.GradientColor2, Settings.Palette);
-    // Type2ではノートを円環の内周へ接続する。
-    AppendExtrudedCylindricalRibbon(Vertices, VertexCount, InnerRadius,
+    // 各鍵盤の白鍵表示面を基準に、内向き／外向きへノートを接続する。
+    AppendExtrudedCylindricalRibbon(Vertices, VertexCount, NoteSurfaceRadius,
       Angle0, Angle1,
       -Time1 / DisplayTime * TimeAxisLength,
-      -Time0 / DisplayTime * TimeAxisLength, Settings.Note3DThickness, Color);
+      -Time0 / DisplayTime * TimeAxisLength, Settings.Note3DThickness,
+      NoteFacesOutward, Color);
   end;
 
   if HorizontalKeyboard then
+  begin
     AppendHorizontalCircularKeyboard(Vertices, VertexCount, Radius,
-      CenterPitch, PitchSpan, LowestKey, HighestKey, Settings)
+      CenterPitch, PitchSpan, LowestKey, HighestKey, Settings,
+      KeyboardFacesOutward);
+    StrikeEffectZ := 0.0;
+  end
   else
   begin
     // 鍵盤の円環本体を先に作り、その後へ白鍵面と黒鍵を重ねる。
@@ -666,9 +811,9 @@ begin
   AppendActiveCircularKeys(Vertices, VertexCount, Data, TimeSeconds,
     Radius, InnerRadius, OuterRadius, CenterPitch, PitchSpan,
     FrontZ, FrontZ, LowestKey, HighestKey, MinTrack, MaxTrack,
-    MinMusicKey, MaxMusicKey, Settings, Horizontal, False);
+    MinMusicKey, MaxMusicKey, Settings, Horizontal, UseOuterSide, False);
 
-  // 黒鍵は内周側へ伸ばし、白鍵面から手前へ押し出して側面も閉じる。
+  // 円環の表示方向に合わせ、内周または外周へ黒鍵を伸ばす。
   BlackFrontZ := FrontZ -
     Max(2.0, Max(0.0, Settings.BlackKey3DThickness));
   for Key := LowestKey to HighestKey do
@@ -679,24 +824,32 @@ begin
         CenterPitch, PitchSpan, Horizontal);
       Angle1 := PitchToAngle(GetPianoKeyPitchCenter(Key) + 0.31,
         CenterPitch, PitchSpan, Horizontal);
-      AppendExtrudedAnnularKey(Vertices, VertexCount,
-        Radius - Max(0.0, Settings.KeyLength) * 0.50,
-        Radius + Max(0.0, Settings.KeyLength) * 0.12,
-        Angle0, Angle1, FrontZ, BlackFrontZ, Settings.Palette.BlackKey);
+      if UseOuterSide then
+        AppendExtrudedAnnularKey(Vertices, VertexCount,
+          Radius - Max(0.0, Settings.KeyLength) * 0.12,
+          Radius + Max(0.0, Settings.KeyLength) * 0.50,
+          Angle0, Angle1, FrontZ, BlackFrontZ, Settings.Palette.BlackKey)
+      else
+        AppendExtrudedAnnularKey(Vertices, VertexCount,
+          Radius - Max(0.0, Settings.KeyLength) * 0.50,
+          Radius + Max(0.0, Settings.KeyLength) * 0.12,
+          Angle0, Angle1, FrontZ, BlackFrontZ, Settings.Palette.BlackKey);
     end;
 
   // 発音中の黒鍵上面を最後にノート色で上書きする。
   AppendActiveCircularKeys(Vertices, VertexCount, Data, TimeSeconds,
     Radius, InnerRadius, OuterRadius, CenterPitch, PitchSpan,
     FrontZ, BlackFrontZ, LowestKey, HighestKey, MinTrack, MaxTrack,
-    MinMusicKey, MaxMusicKey, Settings, Horizontal, True);
+    MinMusicKey, MaxMusicKey, Settings, Horizontal, UseOuterSide, True);
 
-  // 打鍵した内周位置からノート色の光を広げ、短時間で減衰させる。
-    AppendCircularStrikeEffects(Vertices, VertexCount, Data, TimeSeconds,
-      InnerRadius, CenterPitch, PitchSpan, Min(FrontZ, BlackFrontZ) - 0.35,
-      LowestKey, HighestKey, MinTrack, MaxTrack, MinMusicKey, MaxMusicKey,
-      Settings, Horizontal);
+    StrikeEffectZ := Min(FrontZ, BlackFrontZ) - 0.35;
   end;
+
+  // 円環／円筒とも、ノート接続位置のローカル3軸へ打鍵グローを配置する。
+  AppendCircularStrikeEffects(Vertices, VertexCount, Data, TimeSeconds,
+    NoteSurfaceRadius, CenterPitch, PitchSpan, StrikeEffectZ,
+    LowestKey, HighestKey, MinTrack, MaxTrack, MinMusicKey, MaxMusicKey,
+    Settings, Horizontal);
 
   if VertexCount > 0 then
     Result := Video^.DrawPoly(VERTEX_QUAD_COLOR, @Vertices[0],

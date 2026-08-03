@@ -23,7 +23,8 @@ type
 
   TPianoRollStyleType = (
     pstType1,
-    pstType2
+    pstType2,
+    pstType3
   );
 
   TPianoRollOrientation = (
@@ -58,6 +59,7 @@ type
     WhiteKey3DThickness: Double; // 3D平面から手前へ押し出す白鍵の厚み。0は平面。
     BlackKey3DThickness: Double; // 3D平面から手前へ押し出す黒鍵の厚み。0は平面。
     Note3DThickness: Double;     // 3D平面から手前へ押し出すノートの厚み。0は平面。
+    NotePositionOffset: Double;  // 鍵盤基準からノートを手前（正）／奥（負）へ動かす距離。
     Radius: Double;              // 円形座標の基準円周半径。0は表示寸法から自動計算。
     StrikeEffectType: TPianoRollStrikeEffectType; // 発音位置エフェクトのType。
     NoteDepthEnabled: Boolean; // 縁、面取り、つやによる疑似立体表示。
@@ -115,6 +117,7 @@ begin
   Settings.WhiteKey3DThickness := 0.0;
   Settings.BlackKey3DThickness := 0.0;
   Settings.Note3DThickness := 0.0;
+  Settings.NotePositionOffset := 0.0;
   Settings.Radius := 0.0;
   Settings.StrikeEffectType := psetType1;
   Settings.NoteDepthEnabled := True;

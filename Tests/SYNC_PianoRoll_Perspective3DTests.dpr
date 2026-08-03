@@ -47,6 +47,8 @@ var
   CapturedNoteYRange: Single;
   CapturedNoteZRange: Single;
   CapturedTranslucentVertexCount: Integer;
+  CapturedTranslucentXYQuads, CapturedTranslucentXZQuads,
+    CapturedTranslucentYZQuads: Integer;
   CapturedConnectorMaxX, CapturedConnectorMinX: Single;
   CapturedVertexCount, CapturedVertexType: Integer;
   FirstActiveKeyQuad, FirstWhiteKeyQuad, LastActiveKeyQuad,
@@ -67,7 +69,7 @@ function CapturePoly(VertexType: Integer; VertexList: Pointer;
 var
   I, J: Integer;
   IsActiveKeyQuad, IsBlackKeyQuad, IsConnectorQuad,
-  IsFlowingNoteQuad, IsWhiteKeyQuad: Boolean;
+  IsFlowingNoteQuad, IsTranslucentQuad, IsWhiteKeyQuad: Boolean;
   MaxQuadX, MaxQuadY, MaxQuadZ, MinQuadX, MinQuadY, MinQuadZ: Single;
   MaxNoteX, MaxNoteY, MaxNoteZ, MinNoteX, MinNoteY, MinNoteZ: Single;
   Vertex: TVERTEX_COLOR;
@@ -77,6 +79,9 @@ begin
   CapturedNoteVertexCount := 0;
   CapturedOpaqueNoteVertexCount := 0;
   CapturedTranslucentVertexCount := 0;
+  CapturedTranslucentXYQuads := 0;
+  CapturedTranslucentXZQuads := 0;
+  CapturedTranslucentYZQuads := 0;
   CapturedConnectorMinX := MaxSingle;
   CapturedConnectorMaxX := -MaxSingle;
   FirstActiveKeyQuad := -1;
@@ -152,6 +157,7 @@ begin
     IsBlackKeyQuad := True;
     IsConnectorQuad := True;
     IsFlowingNoteQuad := True;
+    IsTranslucentQuad := False;
     IsWhiteKeyQuad := True;
     MinQuadX := MaxSingle;
     MaxQuadX := -MaxSingle;
@@ -162,6 +168,8 @@ begin
     for J := 0 to 3 do
     begin
       Vertex := PVertexArray(VertexList)^[I * 4 + J];
+      IsTranslucentQuad := IsTranslucentQuad or
+        ((Vertex.A > 0.0001) and (Vertex.A < 0.9999));
       MinQuadX := Min(MinQuadX, Vertex.X);
       MaxQuadX := Max(MaxQuadX, Vertex.X);
       MinQuadY := Min(MinQuadY, Vertex.Y);
@@ -215,6 +223,21 @@ begin
     begin
       CapturedConnectorMinX := Min(CapturedConnectorMinX, MinQuadX);
       CapturedConnectorMaxX := Max(CapturedConnectorMaxX, MaxQuadX);
+    end;
+    if IsTranslucentQuad then
+    begin
+      if (MaxQuadX - MinQuadX > 0.1) and
+        (MaxQuadY - MinQuadY > 0.1) and
+        (MaxQuadZ - MinQuadZ < 0.001) then
+        Inc(CapturedTranslucentXYQuads);
+      if (MaxQuadX - MinQuadX > 0.1) and
+        (MaxQuadZ - MinQuadZ > 0.1) and
+        (MaxQuadY - MinQuadY < 0.001) then
+        Inc(CapturedTranslucentXZQuads);
+      if (MaxQuadY - MinQuadY > 0.1) and
+        (MaxQuadZ - MinQuadZ > 0.1) and
+        (MaxQuadX - MinQuadX < 0.001) then
+        Inc(CapturedTranslucentYZQuads);
     end;
   end;
   CapturedNoteXRange := MaxNoteX - MinNoteX;
@@ -286,9 +309,11 @@ begin
 end;
 
 var
-  BaselineBlackTopZ, BaselineWhiteTopZ: Single;
+  BaselineBlackTopZ, BaselineNoteMinZ, BaselineWhiteTopZ: Single;
   Data: IPianoRollMusicData;
   HorizontalBaseTranslucentVertexCount: Integer;
+  BaseTranslucentXYQuads, BaseTranslucentXZQuads,
+    BaseTranslucentYZQuads: Integer;
   HorizontalBlackTopZ, HorizontalWhiteTopZ: Single;
   HorizontalStandardVertexCount, HorizontalWhiteThicknessVertexCount: Integer;
   ObjectInfo: TOBJECT_INFO;
@@ -337,6 +362,23 @@ begin
   StandardVertexCount := CapturedVertexCount;
   BaselineWhiteTopZ := CapturedWhiteMinZ;
   BaselineBlackTopZ := CapturedBlackMinZ;
+  BaselineNoteMinZ := CapturedNoteMinZ;
+
+  Settings.NotePositionOffset := 10.0;
+  Check(DrawVerticalPianoRoll3D(@Video, Data, 0.0, Settings),
+    'positive vertical note position offset draw failed');
+  Check(CapturedNoteMinZ < BaselineNoteMinZ - 9.0,
+    'positive vertical note position offset did not move notes forward');
+  Check(DrawHorizontalPianoRoll3D(@Video, Data, 0.0, Settings),
+    'positive horizontal note position offset draw failed');
+  Check(CapturedNoteMinZ < BaselineNoteMinZ - 9.0,
+    'positive horizontal note position offset did not move notes forward');
+  Settings.NotePositionOffset := -10.0;
+  Check(DrawVerticalPianoRoll3D(@Video, Data, 0.0, Settings),
+    'negative vertical note position offset draw failed');
+  Check(CapturedNoteMinZ > BaselineNoteMinZ + 9.0,
+    'negative vertical note position offset did not move notes backward');
+  Settings.NotePositionOffset := 0.0;
 
   // 中央へ移した鍵盤の過去側にもノートを生成し、鍵盤を手前のZと描画順へ置く。
   Settings.StrikePosition := 0.50;
@@ -464,6 +506,9 @@ begin
     Format('vertical active white key order mismatch: %d, %d, %d',
       [FirstActiveKeyQuad, LastBlackKeyQuad, LastActiveKeyQuad]));
   VerticalBaseTranslucentVertexCount := CapturedTranslucentVertexCount;
+  BaseTranslucentXYQuads := CapturedTranslucentXYQuads;
+  BaseTranslucentXZQuads := CapturedTranslucentXZQuads;
+  BaseTranslucentYZQuads := CapturedTranslucentYZQuads;
   Check(DrawVerticalPianoRoll3D(@Video, Data, 0.5, Settings),
     'vertical active key and glow draw failed');
   Check(CapturedOpaqueNoteVertexCount >= 16,
@@ -471,6 +516,10 @@ begin
   Check(CapturedTranslucentVertexCount >
     VerticalBaseTranslucentVertexCount,
     'vertical strike glow was not generated');
+  Check((CapturedTranslucentXYQuads > BaseTranslucentXYQuads) and
+    (CapturedTranslucentXZQuads > BaseTranslucentXZQuads) and
+    (CapturedTranslucentYZQuads > BaseTranslucentYZQuads),
+    'vertical strike glow did not generate three orthogonal planes');
 
   Check(DrawHorizontalPianoRoll3D(@Video, Data, 0.9, Settings),
     'horizontal active key after glow draw failed');
@@ -482,6 +531,9 @@ begin
     Format('horizontal active white key order mismatch: %d, %d, %d',
       [FirstActiveKeyQuad, LastBlackKeyQuad, LastActiveKeyQuad]));
   HorizontalBaseTranslucentVertexCount := CapturedTranslucentVertexCount;
+  BaseTranslucentXYQuads := CapturedTranslucentXYQuads;
+  BaseTranslucentXZQuads := CapturedTranslucentXZQuads;
+  BaseTranslucentYZQuads := CapturedTranslucentYZQuads;
   Check(DrawHorizontalPianoRoll3D(@Video, Data, 0.5, Settings),
     'horizontal active key and glow draw failed');
   Check(CapturedOpaqueNoteVertexCount >= 16,
@@ -489,6 +541,10 @@ begin
   Check(CapturedTranslucentVertexCount >
     HorizontalBaseTranslucentVertexCount,
     'horizontal strike glow was not generated');
+  Check((CapturedTranslucentXYQuads > BaseTranslucentXYQuads) and
+    (CapturedTranslucentXZQuads > BaseTranslucentXZQuads) and
+    (CapturedTranslucentYZQuads > BaseTranslucentYZQuads),
+    'horizontal strike glow did not generate three orthogonal planes');
   Check(CapturedConnectorMaxX - CapturedConnectorMinX >
     Settings.KeyLength * 0.35,
     'horizontal black key effect was not moved to the black key edge');

@@ -15,7 +15,7 @@ type
   TGetFilterPluginTable = function: PFILTER_PLUGIN_TABLE; cdecl;
   TInitializePlugin = function(Version: DWORD): Byte; cdecl;
   TUninitializePlugin = procedure; cdecl;
-  TItemArray = array[0..38] of Pointer;
+  TItemArray = array[0..39] of Pointer;
   PItemArray = ^TItemArray;
 
 var
@@ -148,12 +148,14 @@ begin
         'piano keyboard must be the default');
       Check(PFILTER_ITEM_TRACK(Items^[9])^.Value = 30.0,
         '3D display time default mismatch');
-      Check((PFILTER_ITEM_TRACK(Items^[18])^.Value = 0) and
-        (PFILTER_ITEM_TRACK(Items^[19])^.Value = 0) and
-        (PFILTER_ITEM_TRACK(Items^[20])^.Value = 0),
+      Check((PFILTER_ITEM_TRACK(Items^[20])^.Value = 0) and
+        (PFILTER_ITEM_TRACK(Items^[21])^.Value = 0) and
+        (PFILTER_ITEM_TRACK(Items^[22])^.Value = 0),
         '3D thickness defaults must be flat');
-      Check(PFILTER_ITEM_TRACK(Items^[37])^.Value = 0,
+      Check(PFILTER_ITEM_TRACK(Items^[17])^.Value = 0,
         'radius default must use automatic sizing');
+      Check(PFILTER_ITEM_TRACK(Items^[18])^.Value = 0,
+        'note position offset default must preserve existing placement');
 
       FillChar(ObjectInfo, SizeOf(ObjectInfo), 0);
       FillChar(Video, SizeOf(Video), 0);
@@ -221,13 +223,24 @@ begin
       Check(CapturedPolyCalls > 0,
         '3D horizontal Type1 did not use DrawPoly');
 
-      // 3D Type2は共通の半径設定を使う円環専用DrawPoly経路へ切り替わる。
+      // 3D Type2横は入れ替え後の外向き円環DrawPoly経路へ切り替わる。
       PFILTER_ITEM_SELECT(Items^[3])^.Value := 1;
-      PFILTER_ITEM_TRACK(Items^[37])^.Value := 0;
+      PFILTER_ITEM_TRACK(Items^[17])^.Value := 0;
       CapturedPolyCalls := 0;
       Table^.Func_Proc_Video(@Video);
       Check(CapturedPolyCalls > 0,
         '3D Type2 did not use the circular DrawPoly path');
+      PFILTER_ITEM_SELECT(Items^[3])^.Value := 2;
+      PFILTER_ITEM_SELECT(Items^[4])^.Value := 0;
+      CapturedPolyCalls := 0;
+      Table^.Func_Proc_Video(@Video);
+      Check(CapturedPolyCalls > 0,
+        '3D Type3 vertical did not use the swapped cylinder DrawPoly path');
+      PFILTER_ITEM_SELECT(Items^[4])^.Value := 1;
+      CapturedPolyCalls := 0;
+      Table^.Func_Proc_Video(@Video);
+      Check(CapturedPolyCalls > 0,
+        '3D Type3 horizontal did not use the outward cylinder DrawPoly path');
       PFILTER_ITEM_SELECT(Items^[3])^.Value := 0;
 
       // 大プリセットのボタンでローカル値と選択中オブジェクトを同時に更新する。
@@ -243,7 +256,7 @@ begin
         'large preset local key length mismatch');
       Check(PFILTER_ITEM_TRACK(Items^[16])^.Value = 60,
         'large preset local key thickness mismatch');
-      Check(PFILTER_ITEM_TRACK(Items^[17])^.Value = 80,
+      Check(PFILTER_ITEM_TRACK(Items^[19])^.Value = 80,
         'large preset local note thickness mismatch');
       Check((CapturedPresetLength = '180') and
         (CapturedPresetThickness = '60') and

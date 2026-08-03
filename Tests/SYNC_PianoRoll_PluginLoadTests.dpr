@@ -41,7 +41,7 @@ type
     Value: Integer;
   end;
   PSelectListItem = ^TSelectListItem;
-  TSelectListArray = array[0..2] of TSelectListItem;
+  TSelectListArray = array[0..3] of TSelectListItem;
   PSelectListArray = ^TSelectListArray;
   TSingleChoiceListArray = array[0..1] of TSelectListItem;
   PSingleChoiceListArray = ^TSingleChoiceListArray;
@@ -81,7 +81,7 @@ type
   end;
   PPluginTable = ^TPluginTable;
 
-  TItemArray = array[0..38] of Pointer;
+  TItemArray = array[0..39] of Pointer;
   PItemArray = ^TItemArray;
 
 var
@@ -115,10 +115,10 @@ begin
     Items := PItemArray(Table^.Items);
     if Items = nil then
       raise Exception.Create('plugin items are nil');
-    for I := 0 to 37 do
+    for I := 0 to 38 do
       if Items^[I] = nil then
         raise Exception.CreateFmt('plugin item %d is nil', [I]);
-    if Items^[38] <> nil then
+    if Items^[39] <> nil then
       raise Exception.Create('plugin items are not terminated');
     FileItem := PFileItem(Items^[0]);
     if string(FileItem^.ItemType) <> 'file' then
@@ -182,83 +182,89 @@ begin
       raise Exception.Create('key thickness item mismatch');
     if PTrackItem(Items^[16])^.Value <> 40 then
       raise Exception.Create('key thickness default mismatch');
-    if string(PItemHeader(Items^[17])^.Name) <> 'ノート太さ (%)' then
-      raise Exception.Create('note thickness item mismatch');
-    if (string(PItemHeader(Items^[18])^.Name) <> '白鍵3D厚み') or
-      (PTrackItem(Items^[18])^.Value <> 0) then
-      raise Exception.Create('white key 3D thickness item mismatch');
-    if (string(PItemHeader(Items^[19])^.Name) <> '黒鍵3D厚み') or
-      (PTrackItem(Items^[19])^.Value <> 0) then
-      raise Exception.Create('black key 3D thickness item mismatch');
-    if (string(PItemHeader(Items^[20])^.Name) <> 'ノート3D厚み') or
-      (PTrackItem(Items^[20])^.Value <> 0) then
-      raise Exception.Create('note 3D thickness item mismatch');
-    if string(PItemHeader(Items^[21])^.Name) <> 'レーン表示' then
-      raise Exception.Create('lane visibility item mismatch');
-    if string(PItemHeader(Items^[22])^.Name) <> '拍線表示' then
-      raise Exception.Create('beat visibility item mismatch');
-    if string(PItemHeader(Items^[23])^.Name) <> '1小節の拍数' then
-      raise Exception.Create('beats per measure item mismatch');
-    if (string(PItemHeader(Items^[24])^.ItemType) <> 'color') or
-      (string(PItemHeader(Items^[24])^.Name) <> '白鍵色') then
-      raise Exception.Create('white key color item mismatch');
-    if string(PItemHeader(Items^[25])^.Name) <> '黒鍵色' then
-      raise Exception.Create('black key color item mismatch');
-    if string(PItemHeader(Items^[26])^.Name) <> '白鍵レーン色' then
-      raise Exception.Create('white lane color item mismatch');
-    if string(PItemHeader(Items^[27])^.Name) <> '黒鍵レーン色' then
-      raise Exception.Create('black lane color item mismatch');
-    if string(PItemHeader(Items^[28])^.Name) <> '拍線色' then
-      raise Exception.Create('beat line color item mismatch');
-    if string(PItemHeader(Items^[29])^.Name) <> '小節線色' then
-      raise Exception.Create('measure line color item mismatch');
-    if string(PItemHeader(Items^[30])^.Name) <> '発音線色' then
-      raise Exception.Create('strike line color item mismatch');
-    if (string(PItemHeader(Items^[31])^.ItemType) <> 'select') or
-      (string(PItemHeader(Items^[31])^.Name) <> 'ノート配色') or
-      (PSelectItem(Items^[31])^.Value <> 0) then
-      raise Exception.Create('track color mode item mismatch');
-    if (string(PItemHeader(Items^[32])^.ItemType) <> 'color') or
-      (string(PItemHeader(Items^[32])^.Name) <> 'ノート単色') then
-      raise Exception.Create('single track color item mismatch');
-    if (string(PItemHeader(Items^[33])^.ItemType) <> 'select') or
-      (string(PItemHeader(Items^[33])^.Name) <> 'ノート立体表示') or
-      (PSelectItem(Items^[33])^.Value <> 1) then
-      raise Exception.Create('note depth item mismatch');
-    if (string(PItemHeader(Items^[34])^.ItemType) <> 'color') or
-      (string(PItemHeader(Items^[34])^.Name) <> 'グラデ色1') or
-      (PColorItem(Items^[34])^.R <> 255) or
-      (PColorItem(Items^[34])^.G <> 0) or
-      (PColorItem(Items^[34])^.B <> 0) then
-      raise Exception.Create('gradient color 1 item mismatch');
-    if (string(PItemHeader(Items^[35])^.ItemType) <> 'color') or
-      (string(PItemHeader(Items^[35])^.Name) <> 'グラデ色2') or
-      (PColorItem(Items^[35])^.R <> 0) or
-      (PColorItem(Items^[35])^.G <> 0) or
-      (PColorItem(Items^[35])^.B <> 255) then
-      raise Exception.Create('gradient color 2 item mismatch');
-    if (string(PItemHeader(Items^[36])^.ItemType) <> 'select') or
-      (string(PItemHeader(Items^[36])^.Name) <> '発音エフェクト') or
-      (PSelectItem(Items^[36])^.Value <> 0) then
-      raise Exception.Create('strike effect type item mismatch');
-    if (string(PItemHeader(Items^[37])^.ItemType) <> 'track') or
-      (string(PItemHeader(Items^[37])^.Name) <> '半径') or
-      (PTrackItem(Items^[37])^.Value <> 0) then
+    if (string(PItemHeader(Items^[17])^.ItemType) <> 'track') or
+      (string(PItemHeader(Items^[17])^.Name) <> '半径') or
+      (PTrackItem(Items^[17])^.Value <> 0) then
       raise Exception.Create('radius item mismatch');
-    if (PColorItem(Items^[24])^.R <> 242) or
-      (PColorItem(Items^[24])^.G <> 242) or
-      (PColorItem(Items^[24])^.B <> 242) or
-      (PColorItem(Items^[24])^.X <> 0) then
+    if (string(PItemHeader(Items^[18])^.ItemType) <> 'track') or
+      (string(PItemHeader(Items^[18])^.Name) <> 'ノート位置オフセット') or
+      (PTrackItem(Items^[18])^.Value <> 0) or
+      (PTrackItem(Items^[18])^.S <> -500) or
+      (PTrackItem(Items^[18])^.E <> 500) then
+      raise Exception.Create('note position offset item mismatch');
+    if string(PItemHeader(Items^[19])^.Name) <> 'ノート太さ (%)' then
+      raise Exception.Create('note thickness item mismatch');
+    if (string(PItemHeader(Items^[20])^.Name) <> '白鍵3D厚み') or
+      (PTrackItem(Items^[20])^.Value <> 0) then
+      raise Exception.Create('white key 3D thickness item mismatch');
+    if (string(PItemHeader(Items^[21])^.Name) <> '黒鍵3D厚み') or
+      (PTrackItem(Items^[21])^.Value <> 0) then
+      raise Exception.Create('black key 3D thickness item mismatch');
+    if (string(PItemHeader(Items^[22])^.Name) <> 'ノート3D厚み') or
+      (PTrackItem(Items^[22])^.Value <> 0) then
+      raise Exception.Create('note 3D thickness item mismatch');
+    if string(PItemHeader(Items^[23])^.Name) <> 'レーン表示' then
+      raise Exception.Create('lane visibility item mismatch');
+    if string(PItemHeader(Items^[24])^.Name) <> '拍線表示' then
+      raise Exception.Create('beat visibility item mismatch');
+    if string(PItemHeader(Items^[25])^.Name) <> '1小節の拍数' then
+      raise Exception.Create('beats per measure item mismatch');
+    if (string(PItemHeader(Items^[26])^.ItemType) <> 'color') or
+      (string(PItemHeader(Items^[26])^.Name) <> '白鍵色') then
+      raise Exception.Create('white key color item mismatch');
+    if string(PItemHeader(Items^[27])^.Name) <> '黒鍵色' then
+      raise Exception.Create('black key color item mismatch');
+    if string(PItemHeader(Items^[28])^.Name) <> '白鍵レーン色' then
+      raise Exception.Create('white lane color item mismatch');
+    if string(PItemHeader(Items^[29])^.Name) <> '黒鍵レーン色' then
+      raise Exception.Create('black lane color item mismatch');
+    if string(PItemHeader(Items^[30])^.Name) <> '拍線色' then
+      raise Exception.Create('beat line color item mismatch');
+    if string(PItemHeader(Items^[31])^.Name) <> '小節線色' then
+      raise Exception.Create('measure line color item mismatch');
+    if string(PItemHeader(Items^[32])^.Name) <> '発音線色' then
+      raise Exception.Create('strike line color item mismatch');
+    if (string(PItemHeader(Items^[33])^.ItemType) <> 'select') or
+      (string(PItemHeader(Items^[33])^.Name) <> 'ノート配色') or
+      (PSelectItem(Items^[33])^.Value <> 0) then
+      raise Exception.Create('track color mode item mismatch');
+    if (string(PItemHeader(Items^[34])^.ItemType) <> 'color') or
+      (string(PItemHeader(Items^[34])^.Name) <> 'ノート単色') then
+      raise Exception.Create('single track color item mismatch');
+    if (string(PItemHeader(Items^[35])^.ItemType) <> 'select') or
+      (string(PItemHeader(Items^[35])^.Name) <> 'ノート立体表示') or
+      (PSelectItem(Items^[35])^.Value <> 1) then
+      raise Exception.Create('note depth item mismatch');
+    if (string(PItemHeader(Items^[36])^.ItemType) <> 'color') or
+      (string(PItemHeader(Items^[36])^.Name) <> 'グラデ色1') or
+      (PColorItem(Items^[36])^.R <> 255) or
+      (PColorItem(Items^[36])^.G <> 0) or
+      (PColorItem(Items^[36])^.B <> 0) then
+      raise Exception.Create('gradient color 1 item mismatch');
+    if (string(PItemHeader(Items^[37])^.ItemType) <> 'color') or
+      (string(PItemHeader(Items^[37])^.Name) <> 'グラデ色2') or
+      (PColorItem(Items^[37])^.R <> 0) or
+      (PColorItem(Items^[37])^.G <> 0) or
+      (PColorItem(Items^[37])^.B <> 255) then
+      raise Exception.Create('gradient color 2 item mismatch');
+    if (string(PItemHeader(Items^[38])^.ItemType) <> 'select') or
+      (string(PItemHeader(Items^[38])^.Name) <> '発音エフェクト') or
+      (PSelectItem(Items^[38])^.Value <> 0) then
+      raise Exception.Create('strike effect type item mismatch');
+    if (PColorItem(Items^[26])^.R <> 242) or
+      (PColorItem(Items^[26])^.G <> 242) or
+      (PColorItem(Items^[26])^.B <> 242) or
+      (PColorItem(Items^[26])^.X <> 0) then
       raise Exception.Create('white key default color mismatch');
-    if (PColorItem(Items^[29])^.R <> 255) or
-      (PColorItem(Items^[29])^.G <> 190) or
-      (PColorItem(Items^[29])^.B <> 80) or
-      (PColorItem(Items^[29])^.X <> 0) then
+    if (PColorItem(Items^[31])^.R <> 255) or
+      (PColorItem(Items^[31])^.G <> 190) or
+      (PColorItem(Items^[31])^.B <> 80) or
+      (PColorItem(Items^[31])^.X <> 0) then
       raise Exception.Create('measure line default color mismatch');
-    if (PColorItem(Items^[32])^.R <> 80) or
-      (PColorItem(Items^[32])^.G <> 210) or
-      (PColorItem(Items^[32])^.B <> 255) or
-      (PColorItem(Items^[32])^.X <> 0) then
+    if (PColorItem(Items^[34])^.R <> 80) or
+      (PColorItem(Items^[34])^.G <> 210) or
+      (PColorItem(Items^[34])^.B <> 255) or
+      (PColorItem(Items^[34])^.X <> 0) then
       raise Exception.Create('single track default color mismatch');
 
     if (PSelectItem(Items^[5])^.List = nil) or
@@ -279,34 +285,34 @@ begin
       (PPitchFollowListArray(
         PSelectItem(Items^[14])^.List)^[3].Name <> nil) then
       raise Exception.Create('pitch follow select list mismatch');
-    if (PSelectItem(Items^[21])^.List = nil) or
-      (PSelectListArray(PSelectItem(Items^[21])^.List)^[2].Name <> nil) then
+    if (PSelectItem(Items^[23])^.List = nil) or
+      (PSelectListArray(PSelectItem(Items^[23])^.List)^[2].Name <> nil) then
       raise Exception.Create('visibility select list is not terminated');
-    if (PSelectItem(Items^[31])^.List = nil) or
+    if (PSelectItem(Items^[33])^.List = nil) or
       (string(PColorModeListArray(
-        PSelectItem(Items^[31])^.List)^[0].Name) <>
+        PSelectItem(Items^[33])^.List)^[0].Name) <>
         '単色') or
       (string(PColorModeListArray(
-        PSelectItem(Items^[31])^.List)^[1].Name) <>
+        PSelectItem(Items^[33])^.List)^[1].Name) <>
         'バリエーション1') or
       (string(PColorModeListArray(
-        PSelectItem(Items^[31])^.List)^[2].Name) <> 'トラック：DOS') or
+        PSelectItem(Items^[33])^.List)^[2].Name) <> 'トラック：DOS') or
       (string(PColorModeListArray(
-        PSelectItem(Items^[31])^.List)^[5].Name) <> 'トラック：暗色') or
+        PSelectItem(Items^[33])^.List)^[5].Name) <> 'トラック：暗色') or
       (string(PColorModeListArray(
-        PSelectItem(Items^[31])^.List)^[6].Name) <> '音階：DOS') or
+        PSelectItem(Items^[33])^.List)^[6].Name) <> '音階：DOS') or
       (string(PColorModeListArray(
-        PSelectItem(Items^[31])^.List)^[9].Name) <> '音階：暗色') or
+        PSelectItem(Items^[33])^.List)^[9].Name) <> '音階：暗色') or
       (string(PColorModeListArray(
-        PSelectItem(Items^[31])^.List)^[10].Name) <> 'ドレミ：虹') or
+        PSelectItem(Items^[33])^.List)^[10].Name) <> 'ドレミ：虹') or
       (string(PColorModeListArray(
-        PSelectItem(Items^[31])^.List)^[12].Name) <> 'ドレミ：暗色') or
+        PSelectItem(Items^[33])^.List)^[12].Name) <> 'ドレミ：暗色') or
       (string(PColorModeListArray(
-        PSelectItem(Items^[31])^.List)^[13].Name) <> 'グラデ色：RGB') or
+        PSelectItem(Items^[33])^.List)^[13].Name) <> 'グラデ色：RGB') or
       (string(PColorModeListArray(
-        PSelectItem(Items^[31])^.List)^[14].Name) <> 'グラデ色：HSV') or
+        PSelectItem(Items^[33])^.List)^[14].Name) <> 'グラデ色：HSV') or
       (PColorModeListArray(
-        PSelectItem(Items^[31])^.List)^[15].Name <> nil) then
+        PSelectItem(Items^[33])^.List)^[15].Name <> nil) then
       raise Exception.Create('track color mode list mismatch');
     if (PSelectItem(Items^[1])^.List = nil) or
       (string(PSingleChoiceListArray(
@@ -327,8 +333,10 @@ begin
         PSelectItem(Items^[3])^.List)^[0].Name) <> 'Type1') or
       (string(PSelectListArray(
         PSelectItem(Items^[3])^.List)^[1].Name) <> 'Type2') or
+      (string(PSelectListArray(
+        PSelectItem(Items^[3])^.List)^[2].Name) <> 'Type3') or
       (PSelectListArray(
-        PSelectItem(Items^[3])^.List)^[2].Name <> nil) then
+        PSelectItem(Items^[3])^.List)^[3].Name <> nil) then
       raise Exception.Create('style type list mismatch');
     if (PSelectItem(Items^[4])^.List = nil) or
       (string(PSelectListArray(
@@ -346,19 +354,19 @@ begin
       (PSizePresetListArray(
         PSelectItem(Items^[6])^.List)^[2].Name <> nil) then
       raise Exception.Create('size preset list mismatch');
-    if (PSelectItem(Items^[33])^.List = nil) or
+    if (PSelectItem(Items^[35])^.List = nil) or
       (string(PSelectListArray(
-        PSelectItem(Items^[33])^.List)^[0].Name) <> '平面') or
+        PSelectItem(Items^[35])^.List)^[0].Name) <> '平面') or
       (string(PSelectListArray(
-        PSelectItem(Items^[33])^.List)^[1].Name) <> '立体') or
+        PSelectItem(Items^[35])^.List)^[1].Name) <> '立体') or
       (PSelectListArray(
-        PSelectItem(Items^[33])^.List)^[2].Name <> nil) then
+        PSelectItem(Items^[35])^.List)^[2].Name <> nil) then
       raise Exception.Create('note depth select list mismatch');
-    if (PSelectItem(Items^[36])^.List = nil) or
+    if (PSelectItem(Items^[38])^.List = nil) or
       (string(PSingleChoiceListArray(
-        PSelectItem(Items^[36])^.List)^[0].Name) <> 'Type1') or
+        PSelectItem(Items^[38])^.List)^[0].Name) <> 'Type1') or
       (PSingleChoiceListArray(
-        PSelectItem(Items^[36])^.List)^[1].Name <> nil) then
+        PSelectItem(Items^[38])^.List)^[1].Name <> nil) then
       raise Exception.Create('strike effect type list mismatch');
     Writeln('PASS');
   finally

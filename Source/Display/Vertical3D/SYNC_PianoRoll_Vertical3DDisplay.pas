@@ -294,44 +294,55 @@ begin
     Round(PeakAlpha * Strength));
 end;
 
-procedure AppendRadialGlowPlane(var Vertices: TVertexColorArray;
-  var VertexCount: Integer; CenterX, PitchRadius, TimeRadius, DisplayTime,
-  TimeAxisLength, BaseY, Height: Double; PeakAlpha: Integer;
+procedure AppendRadialGlowPlane3D(var Vertices: TVertexColorArray;
+  var VertexCount: Integer; CenterX, CenterY, CenterZ,
+  AxisUX, AxisUY, AxisUZ, AxisVX, AxisVY, AxisVZ,
+  RadiusU, RadiusV: Double; PeakAlpha: Integer;
   const Color: TPianoRollColor);
 var
   A00, A01, A10, A11: TPianoRollColor;
-  GridX, GridTime: Integer;
-  NX0, NX1, NT0, NT1, X0, X1: Double;
-  Y0, Y1, Z0, Z1: Single;
+  GridU, GridV: Integer;
+  U0, U1, V0, V1: Double;
 begin
-  for GridTime := -GLOW_GRID_HALF to GLOW_GRID_HALF - 1 do
-    for GridX := -GLOW_GRID_HALF to GLOW_GRID_HALF - 1 do
+  for GridV := -GLOW_GRID_HALF to GLOW_GRID_HALF - 1 do
+    for GridU := -GLOW_GRID_HALF to GLOW_GRID_HALF - 1 do
     begin
-      if VertexCount div 4 >= MAX_QUAD_COUNT then
+      if VertexCount div 4 >= MAX_QUAD_COUNT - 1 then
         Exit;
-      NX0 := GridX / GLOW_GRID_HALF;
-      NX1 := (GridX + 1) / GLOW_GRID_HALF;
-      NT0 := GridTime / GLOW_GRID_HALF;
-      NT1 := (GridTime + 1) / GLOW_GRID_HALF;
-      A00 := GetGlowVertexColor(Color, NX0, NT0, PeakAlpha);
-      A01 := GetGlowVertexColor(Color, NX0, NT1, PeakAlpha);
-      A10 := GetGlowVertexColor(Color, NX1, NT0, PeakAlpha);
-      A11 := GetGlowVertexColor(Color, NX1, NT1, PeakAlpha);
+      U0 := GridU / GLOW_GRID_HALF;
+      U1 := (GridU + 1) / GLOW_GRID_HALF;
+      V0 := GridV / GLOW_GRID_HALF;
+      V1 := (GridV + 1) / GLOW_GRID_HALF;
+      A00 := GetGlowVertexColor(Color, U0, V0, PeakAlpha);
+      A01 := GetGlowVertexColor(Color, U0, V1, PeakAlpha);
+      A10 := GetGlowVertexColor(Color, U1, V0, PeakAlpha);
+      A11 := GetGlowVertexColor(Color, U1, V1, PeakAlpha);
       if (A00.A = 0) and (A01.A = 0) and
         (A10.A = 0) and (A11.A = 0) then
         Continue;
-      EnsureVertexCapacity(Vertices, VertexCount + 4);
-      X0 := CenterX + NX0 * PitchRadius;
-      X1 := CenterX + NX1 * PitchRadius;
-      ResolvePlanePoint(NT0 * TimeRadius, DisplayTime, TimeAxisLength,
-        BaseY, Height, Y0, Z0);
-      ResolvePlanePoint(NT1 * TimeRadius, DisplayTime, TimeAxisLength,
-        BaseY, Height, Y1, Z1);
-      SetVertex(Vertices[VertexCount], X0, Y0, Z0, A00);
-      SetVertex(Vertices[VertexCount + 1], X0, Y1, Z1, A01);
-      SetVertex(Vertices[VertexCount + 2], X1, Y1, Z1, A11);
-      SetVertex(Vertices[VertexCount + 3], X1, Y0, Z0, A10);
-      Inc(VertexCount, 4);
+      EnsureVertexCapacity(Vertices, VertexCount + 8);
+      SetVertex(Vertices[VertexCount],
+        CenterX + AxisUX * U0 * RadiusU + AxisVX * V0 * RadiusV,
+        CenterY + AxisUY * U0 * RadiusU + AxisVY * V0 * RadiusV,
+        CenterZ + AxisUZ * U0 * RadiusU + AxisVZ * V0 * RadiusV, A00);
+      SetVertex(Vertices[VertexCount + 1],
+        CenterX + AxisUX * U0 * RadiusU + AxisVX * V1 * RadiusV,
+        CenterY + AxisUY * U0 * RadiusU + AxisVY * V1 * RadiusV,
+        CenterZ + AxisUZ * U0 * RadiusU + AxisVZ * V1 * RadiusV, A01);
+      SetVertex(Vertices[VertexCount + 2],
+        CenterX + AxisUX * U1 * RadiusU + AxisVX * V1 * RadiusV,
+        CenterY + AxisUY * U1 * RadiusU + AxisVY * V1 * RadiusV,
+        CenterZ + AxisUZ * U1 * RadiusU + AxisVZ * V1 * RadiusV, A11);
+      SetVertex(Vertices[VertexCount + 3],
+        CenterX + AxisUX * U1 * RadiusU + AxisVX * V0 * RadiusV,
+        CenterY + AxisUY * U1 * RadiusU + AxisVY * V0 * RadiusV,
+        CenterZ + AxisUZ * U1 * RadiusU + AxisVZ * V0 * RadiusV, A10);
+      // 反対側から見ても消えないよう、同じ面を逆巻きでも追加する。
+      Vertices[VertexCount + 4] := Vertices[VertexCount];
+      Vertices[VertexCount + 5] := Vertices[VertexCount + 3];
+      Vertices[VertexCount + 6] := Vertices[VertexCount + 2];
+      Vertices[VertexCount + 7] := Vertices[VertexCount + 1];
+      Inc(VertexCount, 8);
     end;
 end;
 
@@ -344,14 +355,15 @@ procedure AppendActiveKeysAndStrikeGlow(var Vertices: TVertexColorArray;
   DrawWhiteKeys, DrawBlackKeys, DrawGlow: Boolean);
 var
   Color: TPianoRollColor;
-  Elapsed, GlowRadius, KeyTopHeight, Strength, TimeRadius: Double;
-  I, PeakAlpha: Integer;
+  Elapsed, GlowRadius, KeyTopHeight, NoteSurfaceHeight, Strength: Double;
+  GlowPlaneAlpha, I, PeakAlpha: Integer;
   IsBlackKey: Boolean;
   Note: TPianoRollNoteData;
   X0, X1, XCenter: Double;
 begin
   if Settings.KeyLength <= 0 then
     Exit;
+  NoteSurfaceHeight := 2.0 + Settings.NotePositionOffset;
   for I := 0 to Data.NoteCount - 1 do
   begin
     Note := Data.Notes[I];
@@ -398,18 +410,28 @@ begin
     PeakAlpha := Round(255 * Sqrt(Strength));
     GlowRadius := Max(16.0, Settings.KeyThickness *
       (0.85 + (1.0 - Strength) * 0.25));
-    TimeRadius := GlowRadius / TimeAxisLength * DisplayTime;
     XCenter := (X0 + X1) * 0.5;
 
     // 鍵盤上面とノート上面のZ差を発光面でつなぎ、打鍵点を独立した光源に見せる。
     AppendVerticalQuad(Vertices, VertexCount,
       XCenter - (X1 - X0) * 0.30, XCenter + (X1 - X0) * 0.30,
       0.0, 0.0,
-      2.0, KeyTopHeight, DisplayTime, TimeAxisLength, BaseY,
+      NoteSurfaceHeight, KeyTopHeight, DisplayTime, TimeAxisLength, BaseY,
       MakeGlowColor(Color, 0.70, Round(PeakAlpha * 0.55)));
-    AppendRadialGlowPlane(Vertices, VertexCount, XCenter, GlowRadius,
-      TimeRadius, DisplayTime, TimeAxisLength, BaseY, KeyTopHeight + 0.35,
-      PeakAlpha, Color);
+    GlowPlaneAlpha := Round(PeakAlpha * 0.55);
+    // 音階×時間、音階×奥行き、時間×奥行きの直交3面をローカル軸で重ねる。
+    AppendRadialGlowPlane3D(Vertices, VertexCount,
+      XCenter, BaseY, -NoteSurfaceHeight - 0.35,
+      1.0, 0.0, 0.0, 0.0, -1.0, 0.0,
+      GlowRadius, GlowRadius, GlowPlaneAlpha, Color);
+    AppendRadialGlowPlane3D(Vertices, VertexCount,
+      XCenter, BaseY, -NoteSurfaceHeight - 0.35,
+      1.0, 0.0, 0.0, 0.0, 0.0, -1.0,
+      GlowRadius, GlowRadius, GlowPlaneAlpha, Color);
+    AppendRadialGlowPlane3D(Vertices, VertexCount,
+      XCenter, BaseY, -NoteSurfaceHeight - 0.35,
+      0.0, -1.0, 0.0, 0.0, 0.0, -1.0,
+      GlowRadius, GlowRadius, GlowPlaneAlpha, Color);
   end;
 end;
 
@@ -509,7 +531,8 @@ begin
       Settings.SingleTrackColor, Settings.GradientColor1,
       Settings.GradientColor2, Settings.Palette);
     AppendExtrudedBox(Vertices, VertexCount, X0, X1, Time0, Time1,
-      DisplayTime, TimeAxisLength, BaseY, 2.0,
+      DisplayTime, TimeAxisLength, BaseY,
+      2.0 + Settings.NotePositionOffset,
       Settings.Note3DThickness, False, Color);
   end;
 
