@@ -11,7 +11,7 @@ uses
 procedure InitializePianoRollContexts;
 procedure FinalizePianoRollContexts;
 function ResolvePianoRollFrameState(Video: PFILTER_PROC_VIDEO;
-  const SharedState: TSyncPianoRollFrameState;
+  const SharedState: TSyncPianoRollFrameState; PlaybackRatePercent: Double;
   out EffectiveState: TSyncPianoRollFrameState): Boolean;
 
 implementation
@@ -37,6 +37,7 @@ type
     AnchorObjectFrame: Integer;
     Rate: Integer;
     Scale: Integer;
+    PlaybackRatePercent: Double;
     UpdateTick: UInt64;
   end;
 
@@ -50,7 +51,7 @@ type
     constructor Create;
     destructor Destroy; override;
     function Resolve(Video: PFILTER_PROC_VIDEO;
-      const SharedState: TSyncPianoRollFrameState;
+      const SharedState: TSyncPianoRollFrameState; PlaybackRatePercent: Double;
       out EffectiveState: TSyncPianoRollFrameState): Boolean;
   end;
 
@@ -97,10 +98,11 @@ begin
 end;
 
 function TPianoRollContextList.Resolve(Video: PFILTER_PROC_VIDEO;
-  const SharedState: TSyncPianoRollFrameState;
+  const SharedState: TSyncPianoRollFrameState; PlaybackRatePercent: Double;
   out EffectiveState: TSyncPianoRollFrameState): Boolean;
 var
   Context: TPianoRollObjectContext;
+  FrameDelta: Integer;
   ObjectInfo: POBJECT_INFO;
   SharedStateIsFresh: Boolean;
 begin
@@ -128,21 +130,29 @@ begin
       Context.AnchorObjectFrame := ObjectInfo^.Frame;
       Context.Rate := SharedState.Rate;
       Context.Scale := SharedState.Scale;
+      if PlaybackRatePercent > 0 then
+        Context.PlaybackRatePercent := PlaybackRatePercent
+      else
+        Context.PlaybackRatePercent := 100.0;
       Context.UpdateTick := SharedState.UpdateTick;
     end;
 
     if not Context.HasAnchor or (Context.Rate <= 0) or
-      (Context.Scale <= 0) then
+      (Context.Scale <= 0) or (Context.PlaybackRatePercent <= 0) then
       Exit;
 
+    FrameDelta := ObjectInfo^.Frame - Context.AnchorObjectFrame;
     EffectiveState := SharedState;
     EffectiveState.Sequence := Context.LastSharedSequence;
     EffectiveState.Frame := Context.AnchorSharedFrame +
-      (ObjectInfo^.Frame - Context.AnchorObjectFrame);
+      Round(FrameDelta * Context.PlaybackRatePercent / 100.0);
     EffectiveState.Rate := Context.Rate;
     EffectiveState.Scale := Context.Scale;
-    EffectiveState.TimeSeconds := EffectiveState.Frame *
-      Context.Scale / Context.Rate;
+    // 低速時も整数フレームへの丸めで時刻が段階的にならないよう、
+    // 基準時刻へローカルフレーム差分と再生倍率を実数のまま加算する。
+    EffectiveState.TimeSeconds := Context.AnchorSharedFrame *
+      Context.Scale / Context.Rate + FrameDelta * Context.Scale /
+      Context.Rate * Context.PlaybackRatePercent / 100.0;
     EffectiveState.UpdateTick := Context.UpdateTick;
     Result := True;
   finally
@@ -167,12 +177,13 @@ begin
 end;
 
 function ResolvePianoRollFrameState(Video: PFILTER_PROC_VIDEO;
-  const SharedState: TSyncPianoRollFrameState;
+  const SharedState: TSyncPianoRollFrameState; PlaybackRatePercent: Double;
   out EffectiveState: TSyncPianoRollFrameState): Boolean;
 begin
   InitializePianoRollContexts;
   Result := (PianoRollContexts <> nil) and
-    PianoRollContexts.Resolve(Video, SharedState, EffectiveState);
+    PianoRollContexts.Resolve(Video, SharedState, PlaybackRatePercent,
+      EffectiveState);
 end;
 
 initialization

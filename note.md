@@ -13,7 +13,7 @@ Filterの単体配置では画面全体へ描画し、Input＋Filter配置では
 - `Source\Plugin\Input\SYNC_PianoRoll_InputPlugin.pas`: ファイル名からベース画像の寸法、時間、フレームレートを生成する。
 - `Source\Common\Timeline\SYNC_PianoRoll_Time.pas`: 単体FilterとInput＋Filterの配置方式に応じた同期時刻を取得する。
 - `Source\Common\Timeline\SYNC_PianoRoll_FrameShared.pas`: Inputが受け取った開始時間込みのフレームをFilterへ共有する。
-- `Source\Common\Timeline\SYNC_PianoRoll_ContextManager.pas`: Inputフレームとローカルフレームをオブジェクト別に対応付けて補間する。
+- `Source\Common\Timeline\SYNC_PianoRoll_ContextManager.pas`: Inputフレーム、再生速度、ローカルフレームをオブジェクト別に対応付けて補間する。
 - `Source\Common\Data\SYNC_PianoRoll_MusicData.pas`: 元音楽ファイルの解析結果を描画用の読み取り専用スナップショットとして共有する。
 - `Source\Common\Color\SYNC_PianoRoll_Colors.pas`: RGBA色型、描画共通パレット、単色と配色バリエーションを定義する。
 - `Source\Common\Layout\SYNC_PianoRoll_DisplayTypes.pas`: 縦横に依存しない表示設定と表示実装の共通契約を定義する。
@@ -28,7 +28,7 @@ Filterの単体配置では画面全体へ描画し、Input＋Filter配置では
 - `Source\Lib\AviUtl2FilterTypes.pas`: フィルタープラグインSDKの最小Delphi ABI定義。
 - `Source\Lib\SharedMemoryBase.pas`: 名前付き共有メモリの最小基礎処理。
 - `Source\Lib\SongReader`: `SYNC_Motion`から導入したMIDI、UST、VSQX、MusicXML、MuseScore解析処理。
-- `Tests\SYNC_PianoRoll_FrameContextTests.dpr`: 共有メモリとオブジェクト別フレーム補間の回帰テスト。
+- `Tests\SYNC_PianoRoll_FrameContextTests.dpr`: 共有メモリ、再生速度、オブジェクト別フレーム補間の回帰テスト。
 - `Tests\SYNC_PianoRoll_MusicDataTests.dpr`: 最小MIDIの直接解析とキャッシュ更新の回帰テスト。
 - `Tests\SYNC_PianoRoll_PianoKeyTests.dpr`: 白鍵・黒鍵判定、白鍵単位の音階位置、白黒共通のノート幅を検証する。
 - `Tests\SYNC_PianoRoll_ColorTests.dpr`: 既存配色と旧実装から移植した13種類の共通色計算を検証する。
@@ -38,7 +38,7 @@ Filterの単体配置では画面全体へ描画し、Input＋Filter配置では
 - `Tests\SYNC_PianoRoll_RenderTests.dpr`: 縦表示のRGBA出力、配色、寸法変更、線幅連動、打鍵発光を検証する描画テスト。
 - `Tests\SYNC_PianoRoll_HorizontalRenderTests.dpr`: 横表示の座標、鍵盤、レーン、拍線、ノート、打鍵発光を検証する。
 - `Tests\SYNC_PianoRoll_Perspective3DTests.dpr`: 縦横3Dの座標軸、押し出し、ハープ鍵盤、DrawPoly境界を検証する。
-- `Tests\SYNC_PianoRoll_StandaloneTimeTests.dpr`: 単体Filterのローカル時刻とInput＋Filterの開始時間込み同期を検証する。
+- `Tests\SYNC_PianoRoll_StandaloneTimeTests.dpr`: 単体Filterのローカル時刻とInput＋Filterの開始時間・再生速度込み同期を検証する。
 
 AviUtl2上の識別名は次の値で固定する。
 
@@ -70,7 +70,10 @@ Input＋Filter方式ではInputのファイル名から生成したベース画�
 現在オブジェクトの`動画ファイル`設定が`.syncpianoroll`を参照している場合だけInput＋Filter方式と判断し、
 Inputの`func_read_video`へ渡されたフレームを共有して、入力設定の`開始時間`を含む時刻を音楽との同期に使う。
 Input再取得が省略された再描画では、Object ID＋Effect ID別に保持したInputフレームと
-`Object_.Frame`の対応から時刻を補間する。新規基準には直近1秒以内に更新された共有値だけを採用し、
+`Object_.Frame`の対応から時刻を補間する。`動画ファイル`の`再生速度`を100%基準の倍率として使い、
+速度変更でInputが再発火した時点にInputフレーム、ローカルフレーム、再生速度をまとめて再基準化する。
+以後Inputがキャッシュで発火しない描画でも、保存した倍率をローカルフレーム差分へ適用する。
+新規基準には直近1秒以内に更新された共有値だけを採用し、
 過去のオブジェクトやプロジェクトの値を誤用しない。
 
 単体Filterはシーン全体へ直接描画するため、ベース画像オブジェクトの標準変形を利用できない。

@@ -36,19 +36,24 @@ begin
   Result := True;
 end;
 
-function IsPianoRollInputObject(Video: PFILTER_PROC_VIDEO): Boolean;
+function IsPianoRollInputObject(Video: PFILTER_PROC_VIDEO;
+  out PlaybackRatePercent: Double): Boolean;
 const
   VIDEO_FILE_EFFECT = '動画ファイル';
   FILE_ITEM = 'ファイル';
+  PLAYBACK_RATE_ITEM = '再生速度';
   PIANO_ROLL_INPUT_EXTENSION = '.syncpianoroll';
 var
   Edit: PEDIT_SECTION;
   FileName: string;
   FileValue: PAnsiChar;
+  FormatSettings: TFormatSettings;
   ObjectHandle: OBJECT_HANDLE;
   ObjectPosition: TOBJECT_LAYER_FRAME;
+  PlaybackRateValue: PAnsiChar;
 begin
   Result := False;
+  PlaybackRatePercent := 100.0;
   if (Video = nil) or (Video^.Object_ = nil) or
     ((Video^.Object_^.Flag and OBJECT_INFO_FLAG_FILTER_OBJECT) <> 0) then
     Exit;
@@ -78,12 +83,28 @@ begin
   if FileValue = nil then
     Exit;
   FileName := UTF8ToString(AnsiString(FileValue));
-  Result := SameText(ExtractFileExt(FileName), PIANO_ROLL_INPUT_EXTENSION);
+  if not SameText(ExtractFileExt(FileName), PIANO_ROLL_INPUT_EXTENSION) then
+    Exit;
+
+  // 再生速度の変更はInputを再発火させるため、新しい共有フレームと同時に
+  // この値をコンテキストへ固定し、以後のキャッシュ描画で同じ倍率を使う。
+  PlaybackRateValue := Edit^.GetObjectItemValue(ObjectHandle,
+    VIDEO_FILE_EFFECT, PLAYBACK_RATE_ITEM);
+  if PlaybackRateValue <> nil then
+  begin
+    FormatSettings := TFormatSettings.Create;
+    FormatSettings.DecimalSeparator := '.';
+    if not TryStrToFloat(UTF8ToString(AnsiString(PlaybackRateValue)),
+      PlaybackRatePercent, FormatSettings) or (PlaybackRatePercent <= 0) then
+      PlaybackRatePercent := 100.0;
+  end;
+  Result := True;
 end;
 
 function TryGetPianoRollTimeSeconds(Video: PFILTER_PROC_VIDEO;
   out TimeSeconds: Double): Boolean;
 var
+  PlaybackRatePercent: Double;
   UsesPianoRollInput: Boolean;
 begin
   var EffectiveState: TSyncPianoRollFrameState;
@@ -101,9 +122,10 @@ begin
   // 専用Inputに載ったメディアオブジェクトだけが共有フレームを使用する。
   // 同一シーンの一般メディアが別Inputの共有値を誤って採用しないよう、先に入力元を確認する。
   // 同一フレームの再描画でInputが再取得されない場合は、オブジェクト別基準から補間する。
-  UsesPianoRollInput := IsPianoRollInputObject(Video);
+  UsesPianoRollInput := IsPianoRollInputObject(Video, PlaybackRatePercent);
   if UsesPianoRollInput and TryReadPianoRollFrame(SharedState) and
-    ResolvePianoRollFrameState(Video, SharedState, EffectiveState) then
+    ResolvePianoRollFrameState(Video, SharedState, PlaybackRatePercent,
+      EffectiveState) then
   begin
     TimeSeconds := EffectiveState.TimeSeconds;
     Exit(True);

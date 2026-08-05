@@ -29,18 +29,19 @@ begin
 end;
 
 procedure CheckResolved(var Video: TFILTER_PROC_VIDEO;
-  const SharedState: TSyncPianoRollFrameState; ExpectedFrame: Integer;
+  const SharedState: TSyncPianoRollFrameState; PlaybackRatePercent: Double;
+  ExpectedFrame: Integer; ExpectedTime: Double;
   const MessageText: string);
 var
   EffectiveState: TSyncPianoRollFrameState;
 begin
-  Check(ResolvePianoRollFrameState(@Video, SharedState, EffectiveState),
+  Check(ResolvePianoRollFrameState(@Video, SharedState, PlaybackRatePercent,
+    EffectiveState),
     MessageText + ': resolve failed');
   Check(EffectiveState.Frame = ExpectedFrame,
     Format('%s: expected frame %d, actual %d',
       [MessageText, ExpectedFrame, EffectiveState.Frame]));
-  Check(SameValue(EffectiveState.TimeSeconds,
-    ExpectedFrame * EffectiveState.Scale / EffectiveState.Rate),
+  Check(SameValue(EffectiveState.TimeSeconds, ExpectedTime),
     MessageText + ': time mismatch');
 end;
 
@@ -80,30 +81,51 @@ begin
   VideoB.Object_ := @ObjectB;
   VideoAEffect2.Object_ := @ObjectAEffect2;
 
-  CheckResolved(VideoA, SharedState, 90, 'object A anchor');
-  CheckResolved(VideoB, SharedState, 90, 'object B anchor');
-  CheckResolved(VideoAEffect2, SharedState, 90, 'effect 2 anchor');
+  CheckResolved(VideoA, SharedState, 100, 90, 3.0, 'object A anchor');
+  CheckResolved(VideoB, SharedState, 100, 90, 3.0, 'object B anchor');
+  CheckResolved(VideoAEffect2, SharedState, 100, 90, 3.0,
+    'effect 2 anchor');
 
   // Inputの共有更新が止まっても、各ローカルフレーム差分で補間する。
   ObjectA.Frame := 11;
   ObjectB.Frame := 51;
   ObjectAEffect2.Frame := 21;
-  CheckResolved(VideoA, SharedState, 91, 'object A interpolation');
-  CheckResolved(VideoB, SharedState, 91, 'object B interpolation');
-  CheckResolved(VideoAEffect2, SharedState, 91, 'effect 2 interpolation');
+  CheckResolved(VideoA, SharedState, 100, 91, 91 / 30,
+    'object A interpolation');
+  CheckResolved(VideoB, SharedState, 100, 91, 91 / 30,
+    'object B interpolation');
+  CheckResolved(VideoAEffect2, SharedState, 100, 91, 91 / 30,
+    'effect 2 interpolation');
 
-  // 新しい共有更新番号を受信したら、各コンテキストを個別に再基準化する。
+  // GUI値だけが変わっても、Inputの新しい共有更新までは基準速度を維持する。
+  ObjectA.Frame := 12;
+  CheckResolved(VideoA, SharedState, 200, 92, 92 / 30,
+    'speed change before input refresh');
+
+  // 新しい共有更新番号を受信したら、その時点の再生速度で再基準化する。
   SharedState.Sequence := 4;
   SharedState.Frame := 120;
   SharedState.UpdateTick := GetTickCount64;
-  ObjectA.Frame := 12;
-  CheckResolved(VideoA, SharedState, 120, 'object A re-anchor');
+  CheckResolved(VideoA, SharedState, 200, 120, 4.0, 'object A re-anchor');
   ObjectA.Frame := 13;
-  CheckResolved(VideoA, SharedState, 121, 'object A after re-anchor');
+  CheckResolved(VideoA, SharedState, 200, 122, 122 / 30,
+    'object A after speed re-anchor');
 
   // Aの再基準化が、まだ新しい共有値を処理していないBへ混入しない。
   ObjectB.Frame := 52;
-  CheckResolved(VideoB, SharedState, 120, 'object B independent re-anchor');
+  CheckResolved(VideoB, SharedState, 200, 120, 4.0,
+    'object B independent re-anchor');
+
+  // 100%未満では整数Frameが同じでも、実数時刻は指定倍率で連続して進む。
+  SharedState.Sequence := 6;
+  SharedState.Frame := 150;
+  SharedState.UpdateTick := GetTickCount64;
+  ObjectA.Frame := 14;
+  CheckResolved(VideoA, SharedState, 50, 150, 5.0,
+    'half speed re-anchor');
+  ObjectA.Frame := 15;
+  CheckResolved(VideoA, SharedState, 50, 150, 150.5 / 30,
+    'half speed fractional interpolation');
 end;
 
 begin

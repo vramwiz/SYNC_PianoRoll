@@ -20,6 +20,7 @@ end;
 
 var
   CurrentFileValue: UTF8String;
+  CurrentPlaybackRateValue: UTF8String;
   CurrentObjectFrame: TOBJECT_LAYER_FRAME;
   CurrentObjectHandle: OBJECT_HANDLE;
   ObjectInfo: TOBJECT_INFO;
@@ -49,9 +50,12 @@ function MockGetObjectItemValue(Obj: OBJECT_HANDLE; Effect: LPCWSTR;
   Item: LPCWSTR): PAnsiChar; cdecl;
 begin
   Result := nil;
-  if (Obj = CurrentObjectHandle) and (string(Effect) = '動画ファイル') and
-    (string(Item) = 'ファイル') then
-    Result := PAnsiChar(CurrentFileValue);
+  if (Obj <> CurrentObjectHandle) or (string(Effect) <> '動画ファイル') then
+    Exit;
+  if string(Item) = 'ファイル' then
+    Result := PAnsiChar(CurrentFileValue)
+  else if string(Item) = '再生速度' then
+    Result := PAnsiChar(CurrentPlaybackRateValue);
 end;
 
 begin
@@ -102,6 +106,7 @@ begin
   CurrentObjectFrame.StartFrame := ObjectInfo.FrameS;
   CurrentObjectFrame.EndFrame := ObjectInfo.FrameE;
   CurrentFileValue := UTF8String('1920_1080_3600_30_1.syncpianoroll');
+  CurrentPlaybackRateValue := UTF8String('100.00');
   Video.Edit := @EditSection;
   PublishPianoRollFrame(81, 30, 1);
   Check(TryGetPianoRollTimeSeconds(@Video, TimeSeconds),
@@ -116,6 +121,20 @@ begin
     'interpolated input time could not be resolved');
   Check(Abs(TimeSeconds - (82 / 30)) < 0.000001,
     'input time interpolation mismatch');
+
+  // 再生速度変更でInputが再発火した後は、新しい基準から指定倍率で補間する。
+  CurrentPlaybackRateValue := UTF8String('200.00');
+  ObjectInfo.Frame := 2;
+  PublishPianoRollFrame(100, 30, 1);
+  Check(TryGetPianoRollTimeSeconds(@Video, TimeSeconds),
+    'speed re-anchored input time could not be resolved');
+  Check(Abs(TimeSeconds - (100 / 30)) < 0.000001,
+    'speed change did not re-anchor input time');
+  ObjectInfo.Frame := 3;
+  Check(TryGetPianoRollTimeSeconds(@Video, TimeSeconds),
+    'speed interpolated input time could not be resolved');
+  Check(Abs(TimeSeconds - (102 / 30)) < 0.000001,
+    'input playback speed was not applied');
 
   // 専用Inputに載っていない一般メディアは、別Inputの共有値が残っていても採用しない。
   CurrentFileValue := UTF8String('ordinary-video.mp4');
