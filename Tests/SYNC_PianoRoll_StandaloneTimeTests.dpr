@@ -20,6 +20,7 @@ end;
 
 var
   CurrentFileValue: UTF8String;
+  CurrentPlaybackPositionValue: UTF8String;
   CurrentPlaybackRateValue: UTF8String;
   CurrentObjectFrame: TOBJECT_LAYER_FRAME;
   CurrentObjectHandle: OBJECT_HANDLE;
@@ -54,6 +55,8 @@ begin
     Exit;
   if string(Item) = 'ファイル' then
     Result := PAnsiChar(CurrentFileValue)
+  else if string(Item) = '再生位置' then
+    Result := PAnsiChar(CurrentPlaybackPositionValue)
   else if string(Item) = '再生速度' then
     Result := PAnsiChar(CurrentPlaybackRateValue);
 end;
@@ -106,6 +109,7 @@ begin
   CurrentObjectFrame.StartFrame := ObjectInfo.FrameS;
   CurrentObjectFrame.EndFrame := ObjectInfo.FrameE;
   CurrentFileValue := UTF8String('1920_1080_3600_30_1.syncpianoroll');
+  CurrentPlaybackPositionValue := UTF8String('');
   CurrentPlaybackRateValue := UTF8String('100.00');
   Video.Edit := @EditSection;
   PublishPianoRollFrame(81, 30, 1);
@@ -135,6 +139,31 @@ begin
     'speed interpolated input time could not be resolved');
   Check(Abs(TimeSeconds - (102 / 30)) < 0.000001,
     'input playback speed was not applied');
+
+  // 再生位置と再生速度を読める場合は、Input共有値を使わず直接同期時刻を求める。
+  ObjectInfo.ID := 102;
+  ObjectInfo.EffectID := 202;
+  ObjectInfo.Frame := 30;
+  ObjectInfo.Time := 1.0;
+  CurrentPlaybackPositionValue := UTF8String(
+    '5.000,29.000,再生範囲,0');
+  CurrentPlaybackRateValue := UTF8String('800.00');
+  PublishPianoRollFrame(999, 30, 1);
+  Check(TryGetPianoRollTimeSeconds(@Video, TimeSeconds),
+    'direct input time could not be resolved');
+  Check(Abs(TimeSeconds - 13.0) < 0.000001,
+    'playback position and speed were not applied directly');
+
+  // Input共有値が更新されなくても、GUIの開始位置と速度変更を直ちに反映する。
+  ObjectInfo.Frame := 60;
+  ObjectInfo.Time := 2.0;
+  CurrentPlaybackPositionValue := UTF8String(
+    '10.000,22.000,再生範囲,0');
+  CurrentPlaybackRateValue := UTF8String('400.00');
+  Check(TryGetPianoRollTimeSeconds(@Video, TimeSeconds),
+    'changed direct input time could not be resolved');
+  Check(Abs(TimeSeconds - 18.0) < 0.000001,
+    'cached input prevented direct setting update');
 
   // 専用Inputに載っていない一般メディアは、別Inputの共有値が残っていても採用しない。
   CurrentFileValue := UTF8String('ordinary-video.mp4');

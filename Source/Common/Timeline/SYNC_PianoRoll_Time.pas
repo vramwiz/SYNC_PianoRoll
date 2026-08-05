@@ -36,24 +36,42 @@ begin
   Result := True;
 end;
 
+function TryParseInvariantFloat(const Value: string;
+  out ParsedValue: Double): Boolean;
+var
+  FormatSettings: TFormatSettings;
+begin
+  FormatSettings := TFormatSettings.Create;
+  FormatSettings.DecimalSeparator := '.';
+  Result := TryStrToFloat(Trim(Value), ParsedValue, FormatSettings);
+end;
+
 function IsPianoRollInputObject(Video: PFILTER_PROC_VIDEO;
-  out PlaybackRatePercent: Double): Boolean;
+  out StartPositionSeconds, PlaybackRatePercent: Double;
+  out HasDirectTiming: Boolean): Boolean;
 const
   VIDEO_FILE_EFFECT = '動画ファイル';
   FILE_ITEM = 'ファイル';
+  PLAYBACK_POSITION_ITEM = '再生位置';
   PLAYBACK_RATE_ITEM = '再生速度';
   PIANO_ROLL_INPUT_EXTENSION = '.syncpianoroll';
 var
+  CommaPosition: Integer;
   Edit: PEDIT_SECTION;
   FileName: string;
   FileValue: PAnsiChar;
-  FormatSettings: TFormatSettings;
   ObjectHandle: OBJECT_HANDLE;
   ObjectPosition: TOBJECT_LAYER_FRAME;
+  PlaybackPositionIsValid: Boolean;
+  PlaybackPositionText: string;
+  PlaybackPositionValue: PAnsiChar;
+  PlaybackRateIsValid: Boolean;
   PlaybackRateValue: PAnsiChar;
 begin
   Result := False;
+  StartPositionSeconds := 0.0;
   PlaybackRatePercent := 100.0;
+  HasDirectTiming := False;
   if (Video = nil) or (Video^.Object_ = nil) or
     ((Video^.Object_^.Flag and OBJECT_INFO_FLAG_FILTER_OBJECT) <> 0) then
     Exit;
@@ -86,25 +104,42 @@ begin
   if not SameText(ExtractFileExt(FileName), PIANO_ROLL_INPUT_EXTENSION) then
     Exit;
 
-  // 再生速度の変更はInputを再発火させるため、新しい共有フレームと同時に
-  // この値をコンテキストへ固定し、以後のキャッシュ描画で同じ倍率を使う。
+  // 再生位置は「開始値,終了値,変化方法,補助値」の保存形式なので、
+  // 現在の素材時刻を直接計算する基準として先頭の開始値だけを使用する。
+  PlaybackPositionValue := Edit^.GetObjectItemValue(ObjectHandle,
+    VIDEO_FILE_EFFECT, PLAYBACK_POSITION_ITEM);
   PlaybackRateValue := Edit^.GetObjectItemValue(ObjectHandle,
     VIDEO_FILE_EFFECT, PLAYBACK_RATE_ITEM);
-  if PlaybackRateValue <> nil then
+  PlaybackPositionIsValid := False;
+  if PlaybackPositionValue <> nil then
   begin
-    FormatSettings := TFormatSettings.Create;
-    FormatSettings.DecimalSeparator := '.';
-    if not TryStrToFloat(UTF8ToString(AnsiString(PlaybackRateValue)),
-      PlaybackRatePercent, FormatSettings) or (PlaybackRatePercent <= 0) then
-      PlaybackRatePercent := 100.0;
+    PlaybackPositionText := UTF8ToString(
+      AnsiString(PlaybackPositionValue));
+    CommaPosition := Pos(',', PlaybackPositionText);
+    if CommaPosition > 0 then
+      PlaybackPositionText := Copy(PlaybackPositionText, 1,
+        CommaPosition - 1);
+    PlaybackPositionIsValid := TryParseInvariantFloat(
+      PlaybackPositionText, StartPositionSeconds);
   end;
+  PlaybackRateIsValid := (PlaybackRateValue <> nil) and
+    TryParseInvariantFloat(UTF8ToString(AnsiString(PlaybackRateValue)),
+      PlaybackRatePercent) and (PlaybackRatePercent > 0);
+  if not PlaybackPositionIsValid then
+    StartPositionSeconds := 0.0;
+  if not PlaybackRateIsValid then
+    PlaybackRatePercent := 100.0;
+  HasDirectTiming := PlaybackPositionIsValid and PlaybackRateIsValid;
   Result := True;
 end;
 
 function TryGetPianoRollTimeSeconds(Video: PFILTER_PROC_VIDEO;
   out TimeSeconds: Double): Boolean;
 var
+  HasDirectTiming: Boolean;
+  LocalTimeSeconds: Double;
   PlaybackRatePercent: Double;
+  StartPositionSeconds: Double;
   UsesPianoRollInput: Boolean;
 begin
   var EffectiveState: TSyncPianoRollFrameState;
@@ -119,10 +154,21 @@ begin
   if (Video^.Object_^.Flag and OBJECT_INFO_FLAG_FILTER_OBJECT) <> 0 then
     Exit(TryGetObjectFrameTimeSeconds(Video, TimeSeconds));
 
-  // 専用Inputに載ったメディアオブジェクトだけが共有フレームを使用する。
+  // 専用Inputに載ったメディアオブジェクトでは、標準の再生位置と再生速度から
+  // 毎回直接計算することでInputのフレームキャッシュに依存しない。
   // 同一シーンの一般メディアが別Inputの共有値を誤って採用しないよう、先に入力元を確認する。
-  // 同一フレームの再描画でInputが再取得されない場合は、オブジェクト別基準から補間する。
-  UsesPianoRollInput := IsPianoRollInputObject(Video, PlaybackRatePercent);
+  UsesPianoRollInput := IsPianoRollInputObject(Video, StartPositionSeconds,
+    PlaybackRatePercent, HasDirectTiming);
+  if UsesPianoRollInput and HasDirectTiming and
+    TryGetObjectFrameTimeSeconds(Video, LocalTimeSeconds) then
+  begin
+    TimeSeconds := StartPositionSeconds + LocalTimeSeconds *
+      PlaybackRatePercent / 100.0;
+    Exit(True);
+  end;
+
+  // 古いプロジェクトやSDK差異で設定値を読めない場合だけ、Input共有値と
+  // オブジェクト別基準による従来の補間を安全策として維持する。
   if UsesPianoRollInput and TryReadPianoRollFrame(SharedState) and
     ResolvePianoRollFrameState(Video, SharedState, PlaybackRatePercent,
       EffectiveState) then

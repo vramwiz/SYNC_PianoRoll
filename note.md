@@ -11,7 +11,7 @@ Filterの単体配置では画面全体へ描画し、Input＋Filter配置では
 - `SYNC_PianoRoll_Input.dpr/.dproj`: 標準変形を使う構成の透明ベース画像を提供し、単体配置との互換確認用として同じフォルダーへ置く。
 - `Source\Plugin\Filter\SYNC_PianoRoll_FilterPlugin.pas`: Filter登録、設定取得、表示実装の選択を担当する。
 - `Source\Plugin\Input\SYNC_PianoRoll_InputPlugin.pas`: ファイル名からベース画像の寸法、時間、フレームレートを生成する。
-- `Source\Common\Timeline\SYNC_PianoRoll_Time.pas`: 単体FilterとInput＋Filterの配置方式に応じた同期時刻を取得する。
+- `Source\Common\Timeline\SYNC_PianoRoll_Time.pas`: 単体FilterとInput＋Filterの配置方式に応じ、標準の再生位置と再生速度から同期時刻を取得する。
 - `Source\Common\Timeline\SYNC_PianoRoll_FrameShared.pas`: Inputが受け取った開始時間込みのフレームをFilterへ共有する。
 - `Source\Common\Timeline\SYNC_PianoRoll_ContextManager.pas`: Inputフレーム、再生速度、ローカルフレームをオブジェクト別に対応付けて補間する。
 - `Source\Common\Data\SYNC_PianoRoll_MusicData.pas`: 元音楽ファイルの解析結果を描画用の読み取り専用スナップショットとして共有する。
@@ -68,13 +68,15 @@ Input＋Filter方式ではInputのファイル名から生成したベース画�
 単体Filterと一般メディア上のFilterでは、`Object_.Frame`をシーンのフレームレートで秒へ変換し、
 配置先頭を音楽データの0秒とする。この経路では共有メモリを参照しない。
 現在オブジェクトの`動画ファイル`設定が`.syncpianoroll`を参照している場合だけInput＋Filter方式と判断し、
-Inputの`func_read_video`へ渡されたフレームを共有して、入力設定の`開始時間`を含む時刻を音楽との同期に使う。
-Input再取得が省略された再描画では、Object ID＋Effect ID別に保持したInputフレームと
-`Object_.Frame`の対応から時刻を補間する。`動画ファイル`の`再生速度`を100%基準の倍率として使い、
-速度変更でInputが再発火した時点にInputフレーム、ローカルフレーム、再生速度をまとめて再基準化する。
-以後Inputがキャッシュで発火しない描画でも、保存した倍率をローカルフレーム差分へ適用する。
-新規基準には直近1秒以内に更新された共有値だけを採用し、
-過去のオブジェクトやプロジェクトの値を誤用しない。
+`再生位置`の先頭に保存された開始秒と`再生速度`を編集APIから毎回取得する。
+音楽時刻は開始秒へ、`Object_.Frame`をシーンのフレームレートで秒換算したローカル時刻と
+100%基準の再生速度倍率を掛けた値を加えて直接計算する。この経路はInputの`func_read_video`が
+キャッシュで再発火しなくても影響を受けず、開始位置または再生速度の変更を直ちに反映する。
+
+標準設定を取得または解析できない場合だけ、Inputの`func_read_video`へ渡されたフレームと
+Object ID＋Effect ID別のローカル基準による従来の共有補間へフォールバックする。
+共有補間の新規基準には直近1秒以内に更新された共有値だけを採用し、過去のオブジェクトや
+プロジェクトの値を誤用しない。
 
 単体Filterはシーン全体へ直接描画するため、ベース画像オブジェクトの標準変形を利用できない。
 位置移動、回転、拡大率、透明度等が必要な場合はInput＋Filter方式を使う。
