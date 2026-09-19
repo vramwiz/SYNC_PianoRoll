@@ -195,13 +195,13 @@ begin
     if string(PItemHeader(Items^[19])^.Name) <> 'ノート太さ (%)' then
       raise Exception.Create('note thickness item mismatch');
     if (string(PItemHeader(Items^[20])^.Name) <> '白鍵3D厚み') or
-      (PTrackItem(Items^[20])^.Value <> 0) then
+      (PTrackItem(Items^[20])^.Value <> 30) then
       raise Exception.Create('white key 3D thickness item mismatch');
     if (string(PItemHeader(Items^[21])^.Name) <> '黒鍵3D厚み') or
-      (PTrackItem(Items^[21])^.Value <> 0) then
+      (PTrackItem(Items^[21])^.Value <> 20) then
       raise Exception.Create('black key 3D thickness item mismatch');
     if (string(PItemHeader(Items^[22])^.Name) <> 'ノート3D厚み') or
-      (PTrackItem(Items^[22])^.Value <> 0) then
+      (PTrackItem(Items^[22])^.Value <> 20) then
       raise Exception.Create('note 3D thickness item mismatch');
     if string(PItemHeader(Items^[23])^.Name) <> 'レーン表示' then
       raise Exception.Create('lane visibility item mismatch');

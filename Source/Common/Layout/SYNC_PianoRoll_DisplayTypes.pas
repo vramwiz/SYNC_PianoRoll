@@ -114,9 +114,10 @@ begin
   Settings.KeyLength := 120.0;
   Settings.KeyThickness := 40.0;
   Settings.NoteThickness := 0.80;
-  Settings.WhiteKey3DThickness := 0.0;
-  Settings.BlackKey3DThickness := 0.0;
-  Settings.Note3DThickness := 0.0;
+  // 3D表示を選ぶだけで厚みが付くよう、GUIと共通の初期値にする。
+  Settings.WhiteKey3DThickness := 30.0;
+  Settings.BlackKey3DThickness := 20.0;
+  Settings.Note3DThickness := 20.0;
   Settings.NotePositionOffset := 0.0;
   Settings.Radius := 0.0;
   Settings.StrikeEffectType := psetType1;

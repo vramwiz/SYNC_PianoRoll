@@ -426,21 +426,21 @@ begin
 
     WhiteKey3DThicknessItem.ItemType := 'track';
     WhiteKey3DThicknessItem.Name := '白鍵3D厚み';
-    WhiteKey3DThicknessItem.Value := 0;
+    WhiteKey3DThicknessItem.Value := 30;
     WhiteKey3DThicknessItem.S := 0;
     WhiteKey3DThicknessItem.E := 500;
     WhiteKey3DThicknessItem.Step := 1;
 
     BlackKey3DThicknessItem.ItemType := 'track';
     BlackKey3DThicknessItem.Name := '黒鍵3D厚み';
-    BlackKey3DThicknessItem.Value := 0;
+    BlackKey3DThicknessItem.Value := 20;
     BlackKey3DThicknessItem.S := 0;
     BlackKey3DThicknessItem.E := 500;
     BlackKey3DThicknessItem.Step := 1;
 
     Note3DThicknessItem.ItemType := 'track';
     Note3DThicknessItem.Name := 'ノート3D厚み';
-    Note3DThicknessItem.Value := 0;
+    Note3DThicknessItem.Value := 20;
     Note3DThicknessItem.S := 0;
     Note3DThicknessItem.E := 500;
     Note3DThicknessItem.Step := 1;
