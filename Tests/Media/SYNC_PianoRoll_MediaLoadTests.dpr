@@ -1,6 +1,6 @@
-﻿program SYNC_PianoRoll_PluginLoadTests;
+﻿program SYNC_PianoRoll_MediaLoadTests;
 
-// Filter DLLの登録項目、初期値、選択肢配列のnil終端を検証する。
+// 単体メディアDLLの登録項目、初期値、選択肢配列のnil終端を検証する。
 
 {$APPTYPE CONSOLE}
 
@@ -10,7 +10,7 @@ uses
 
 const
   FILTER_FLAG_VIDEO = 1;
-  FILTER_FLAG_FILTER = 8;
+  FILTER_FLAG_INPUT = 4;
 
 type
   TGetFilterPluginTable = function: Pointer; cdecl;
@@ -26,6 +26,8 @@ type
     ItemType: PWideChar;
     Name: PWideChar;
     Value, S, E, Step: Double;
+    ZeroDisplay: PWideChar;
+    SliderRatio: Double;
   end;
   PTrackItem = ^TTrackItem;
 
@@ -81,7 +83,7 @@ type
   end;
   PPluginTable = ^TPluginTable;
 
-  TItemArray = array[0..39] of Pointer;
+  TItemArray = array[0..43] of Pointer;
   PItemArray = ^TItemArray;
 
 var
@@ -106,19 +108,19 @@ begin
     Table := PPluginTable(GetTable());
     if Table = nil then
       raise Exception.Create('plugin table is nil');
-    if string(Table^.Name) <> 'SYNC_ピアノロール_Filter' then
+    if string(Table^.Name) <> 'ピアノロール' then
       raise Exception.Create('plugin name mismatch');
-    // 単体配置とInputベースへの追加で共用する映像生成登録を維持する。
-    if Table^.Flag <> (FILTER_FLAG_VIDEO or FILTER_FLAG_FILTER) then
-      raise Exception.Create('plugin is not registered as a standalone filter');
+    // メディアオブジェクトの生成元として登録し、追加フィルターとは区別する。
+    if Table^.Flag <> (FILTER_FLAG_VIDEO or FILTER_FLAG_INPUT) then
+      raise Exception.Create('plugin is not registered as a media source');
 
     Items := PItemArray(Table^.Items);
     if Items = nil then
       raise Exception.Create('plugin items are nil');
-    for I := 0 to 38 do
+    for I := 0 to 42 do
       if Items^[I] = nil then
         raise Exception.CreateFmt('plugin item %d is nil', [I]);
-    if Items^[39] <> nil then
+    if Items^[43] <> nil then
       raise Exception.Create('plugin items are not terminated');
     FileItem := PFileItem(Items^[0]);
     if string(FileItem^.ItemType) <> 'file' then
@@ -251,6 +253,13 @@ begin
       (string(PItemHeader(Items^[38])^.Name) <> '発音エフェクト') or
       (PSelectItem(Items^[38])^.Value <> 0) then
       raise Exception.Create('strike effect type item mismatch');
+    // 配置先の実DLLも検証できるよう、開始位置の入力範囲を登録情報から確認する。
+    if (string(PItemHeader(Items^[41])^.ItemType) <> 'track2') or
+      (PTrackItem(Items^[41])^.S <> -10) or
+      (PTrackItem(Items^[41])^.E <> 1800) or
+      (PTrackItem(Items^[41])^.Step <> 1) or
+      (Abs(PTrackItem(Items^[41])^.SliderRatio - 18.1) > 0.0001) then
+      raise Exception.Create('start position range or sensitivity mismatch');
     if (PColorItem(Items^[26])^.R <> 242) or
       (PColorItem(Items^[26])^.G <> 242) or
       (PColorItem(Items^[26])^.B <> 242) or
@@ -368,6 +377,11 @@ begin
       (PSingleChoiceListArray(
         PSelectItem(Items^[38])^.List)^[1].Name <> nil) then
       raise Exception.Create('strike effect type list mismatch');
+    if (PTrackItem(Items^[39])^.Value <> 0) or
+      (PTrackItem(Items^[40])^.Value <> 0) or
+      (PTrackItem(Items^[41])^.Value <> 0) or
+      (PTrackItem(Items^[42])^.Value <> 100) then
+      raise Exception.Create('media size/time defaults mismatch');
     Writeln('PASS');
   finally
     FreeLibrary(ModuleHandle);

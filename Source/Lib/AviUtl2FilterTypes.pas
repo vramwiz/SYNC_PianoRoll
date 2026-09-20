@@ -119,6 +119,8 @@ type
     S        : Double;  // 最小値。
     E        : Double;  // 最大値。
     Step     : Double;  // GUI上の変更単位。
+    ZeroDisplay: LPCWSTR; // track2のゼロ値表示。旧trackでは参照されない。
+    SliderRatio: Double; // track2の操作範囲倍率。値が大きいほど細かく操作できる。
   end;
 
   // 列挙値から1つを選ぶ選択項目。ListはName=nilの要素で終端する。
@@ -172,6 +174,7 @@ type
 
 const
   FILTER_FLAG_VIDEO = 1;
+  FILTER_FLAG_INPUT = 4;
   FILTER_FLAG_FILTER = 8;
   OBJECT_INFO_FLAG_FILTER_OBJECT = 1;
 

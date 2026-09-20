@@ -36,7 +36,7 @@ type
   private
     function GetNotes(Index: Integer): TSongNoteItem; // Notes プロパティ用アクセサ
   public
-    // NoteOn を追加または既存ノートに情報を付与
+    // NoteOnは音ごとに追加する。歌詞だけの仮ノートがある場合のみ再利用する。
     procedure AddNoteOn(TrackIndex, Key, Velocity: Integer; StartSec: Double);
     // NoteOff を処理しノートの終了時刻を確定
     procedure AddNoteOff(TrackIndex, Key: Integer; TimeSec: Double);
@@ -85,6 +85,9 @@ var
   Item: TSongNoteItem;
 begin
   i := IndexOfStartSec(TrackIndex,StartSec);
+  // 同時刻でも和音の各音は別ノート。再利用できるのは先行歌詞用の仮ノートだけ。
+  if (I >= 0) and (Items[I].Key >= 0) then
+    I := -1;
   if I = -1 then begin
     Item := AddNew;
     Item.TrackIndex := TrackIndex;
@@ -109,6 +112,8 @@ begin
     Item.TrackIndex := TrackIndex;
     Item.StartSec := StartSec;
     Item.EndSec     := -1;   // 未確定
+    // MIDIの有効音域0～127と区別し、後続NoteOnだけがこの仮ノートを引き継ぐ。
+    Item.Key := -1;
   end
   else begin
     Item := Items[I];

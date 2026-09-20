@@ -9,11 +9,14 @@
         <TargetedPlatforms>2</TargetedPlatforms>
         <AppType>Library</AppType>
         <MainSource>SYNC_PianoRoll_Filter.dpr</MainSource>
+        <PostBuildEvent>powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\Setup\deploy_plugin.ps1&quot; -OutputDirectory &quot;$(MSBuildProjectDirectory)\$(Platform)\$(Config)&quot;</PostBuildEvent>
+        <PostBuildEventIgnoreExitCode>false</PostBuildEventIgnoreExitCode>
+        <PostBuildEventExecuteWhen>Always</PostBuildEventExecuteWhen>
         <Base>True</Base>
     </PropertyGroup>
     <PropertyGroup>
         <GenDll>true</GenDll>
-        <DCC_DcuOutput>.\$(Platform)\$(Config)\DCU</DCC_DcuOutput>
+        <DCC_DcuOutput>.\$(Platform)\$(Config)\MediaDCU</DCC_DcuOutput>
         <DCC_ExeOutput>.\$(Platform)\$(Config)</DCC_ExeOutput>
         <DCC_E>false</DCC_E>
         <DCC_N>false</DCC_N>
@@ -66,12 +69,7 @@
     <PropertyGroup Condition="'$(Cfg_1_Win64)'!=''">
         <Manifest_File>(なし)</Manifest_File>
         <AppDPIAwarenessMode>none</AppDPIAwarenessMode>
-        <DCC_ExeOutput>C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll</DCC_ExeOutput>
-        <PreBuildEvent><![CDATA[if not exist "C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll" mkdir "C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll"]]></PreBuildEvent>
-        <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
-        <PostBuildEvent><![CDATA[copy /Y "C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll\$(PROJECTNAME).dll" "C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll\$(PROJECTNAME).auf2"]]></PostBuildEvent>
-        <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
-        <Debugger_HostApplication>D:\aviutl2_v2.1.0\aviutl2.exe</Debugger_HostApplication>
+        <Debugger_HostApplication>D:\aviutl2_v2.1.3a\aviutl2.exe</Debugger_HostApplication>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2)'!=''">
         <BT_BuildType>Release</BT_BuildType>
@@ -83,65 +81,51 @@
     <PropertyGroup Condition="'$(Cfg_2_Win64)'!=''">
         <Manifest_File>(なし)</Manifest_File>
         <AppDPIAwarenessMode>none</AppDPIAwarenessMode>
-        <DCC_ExeOutput>C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll</DCC_ExeOutput>
-        <PreBuildEvent><![CDATA[if not exist "C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll" mkdir "C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll"]]></PreBuildEvent>
-        <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
-        <PostBuildEvent><![CDATA[copy /Y "C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll\$(PROJECTNAME).dll" "C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll\$(PROJECTNAME).auf2"&&if exist "C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll\$(PROJECTNAME).dll" del /Q "C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll\$(PROJECTNAME).dll"&&if exist "C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll\$(PROJECTNAME).rsm" del /Q "C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll\$(PROJECTNAME).rsm"]]></PostBuildEvent>
-        <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
         <Debugger_HostApplication>D:\aviutl2_v2.1.3a\aviutl2.exe</Debugger_HostApplication>
     </PropertyGroup>
-    <ItemGroup>
-        <DelphiCompile Include="$(MainSource)">
-            <MainSource>MainSource</MainSource>
-        </DelphiCompile>
-        <DCCReference Include="Source\Lib\AviUtl2FilterTypes.pas"/>
-        <DCCReference Include="Source\Lib\SharedMemoryBase.pas"/>
-        <DCCReference Include="Source\Common\Timeline\SYNC_PianoRoll_FrameShared.pas"/>
-        <DCCReference Include="Source\Common\Timeline\SYNC_PianoRoll_ContextManager.pas"/>
-        <DCCReference Include="Source\Common\Timeline\SYNC_PianoRoll_Time.pas"/>
-        <DCCReference Include="Source\Lib\SongReader\RTTIPersistent.pas"/>
-        <DCCReference Include="Source\Lib\SongReader\RTTIPersistentIni.pas"/>
-        <DCCReference Include="Source\Lib\SongReader\SectionFileManager.pas"/>
-        <DCCReference Include="Source\Lib\SongReader\TextEncodingUtils.pas"/>
-        <DCCReference Include="Source\Lib\SongReader\SongAIUEO.pas"/>
-        <DCCReference Include="Source\Lib\SongReader\SongDataInfo.pas"/>
-        <DCCReference Include="Source\Lib\SongReader\SongDataNote.pas"/>
-        <DCCReference Include="Source\Lib\SongReader\SongDataTempo.pas"/>
-        <DCCReference Include="Source\Lib\SongReader\SongDataTrack.pas"/>
-        <DCCReference Include="Source\Lib\SongReader\SongData.pas"/>
-        <DCCReference Include="Source\Lib\SongReader\SongReader.pas"/>
-        <DCCReference Include="Source\Lib\SongReader\SongReaderSMF.pas"/>
-        <DCCReference Include="Source\Lib\SongReader\SongReaderUST.pas"/>
-        <DCCReference Include="Source\Lib\SongReader\SongReaderVSQX.pas"/>
-        <DCCReference Include="Source\Lib\SongReader\SongReaderMusicXML.pas"/>
-        <DCCReference Include="Source\Lib\SongReader\SongReaderMusicMSC.pas"/>
-        <DCCReference Include="Source\Lib\SongReader\SongReaderMusicMSCZ.pas"/>
-        <DCCReference Include="Source\Lib\SongReader\SongReaderManager.pas"/>
-        <DCCReference Include="Source\Common\Data\SYNC_PianoRoll_MusicData.pas"/>
-        <DCCReference Include="Source\Common\Data\SYNC_PianoRoll_PianoKeys.pas"/>
-        <DCCReference Include="Source\Common\Color\SYNC_PianoRoll_Colors.pas"/>
-        <DCCReference Include="Source\Common\Render\SYNC_PianoRoll_RGBA.pas"/>
-        <DCCReference Include="Source\Common\Layout\SYNC_PianoRoll_DisplayTypes.pas"/>
-        <DCCReference Include="Source\Common\Layout\SYNC_PianoRoll_PitchFollow.pas"/>
-        <DCCReference Include="Source\Display\Vertical\SYNC_PianoRoll_VerticalDisplay.pas"/>
-        <DCCReference Include="Source\Display\Horizontal\SYNC_PianoRoll_HorizontalDisplay.pas"/>
-        <DCCReference Include="Source\Display\Vertical3D\SYNC_PianoRoll_Vertical3DDisplay.pas"/>
-        <DCCReference Include="Source\Display\Horizontal3D\SYNC_PianoRoll_Horizontal3DDisplay.pas"/>
-        <DCCReference Include="Source\Display\Circular3D\SYNC_PianoRoll_Circular3DDisplay.pas"/>
-        <DCCReference Include="Source\Common\Render\SYNC_PianoRoll_Renderer.pas"/>
-        <DCCReference Include="Source\Plugin\Filter\SYNC_PianoRoll_FilterPlugin.pas"/>
-        <BuildConfiguration Include="Base">
-            <Key>Base</Key>
-        </BuildConfiguration>
-        <BuildConfiguration Include="Debug">
-            <Key>Cfg_1</Key>
-            <CfgParent>Base</CfgParent>
-        </BuildConfiguration>
-        <BuildConfiguration Include="Release">
-            <Key>Cfg_2</Key>
-            <CfgParent>Base</CfgParent>
-        </BuildConfiguration>
-    </ItemGroup>
+  <ItemGroup>
+    <DelphiCompile Include="$(MainSource)"><MainSource>MainSource</MainSource></DelphiCompile>
+    <DCCReference Include="Source\Lib\AviUtl2FilterTypes.pas"/>
+    <DCCReference Include="Source\Lib\SongReader\RTTIPersistent.pas"/>
+    <DCCReference Include="Source\Lib\SongReader\RTTIPersistentIni.pas"/>
+    <DCCReference Include="Source\Lib\SongReader\SectionFileManager.pas"/>
+    <DCCReference Include="Source\Lib\SongReader\TextEncodingUtils.pas"/>
+    <DCCReference Include="Source\Lib\SongReader\SongAIUEO.pas"/>
+    <DCCReference Include="Source\Lib\SongReader\SongDataInfo.pas"/>
+    <DCCReference Include="Source\Lib\SongReader\SongDataNote.pas"/>
+    <DCCReference Include="Source\Lib\SongReader\SongDataTempo.pas"/>
+    <DCCReference Include="Source\Lib\SongReader\SongDataTrack.pas"/>
+    <DCCReference Include="Source\Lib\SongReader\SongData.pas"/>
+    <DCCReference Include="Source\Lib\SongReader\SongReader.pas"/>
+    <DCCReference Include="Source\Lib\SongReader\SongReaderSMF.pas"/>
+    <DCCReference Include="Source\Lib\SongReader\SongReaderUST.pas"/>
+    <DCCReference Include="Source\Lib\SongReader\SongReaderVSQX.pas"/>
+    <DCCReference Include="Source\Lib\SongReader\SongReaderMusicXML.pas"/>
+    <DCCReference Include="Source\Lib\SongReader\SongReaderMusicMSC.pas"/>
+    <DCCReference Include="Source\Lib\SongReader\SongReaderMusicMSCZ.pas"/>
+    <DCCReference Include="Source\Lib\SongReader\SongReaderManager.pas"/>
+    <DCCReference Include="Source\Common\Data\SYNC_PianoRoll_MusicData.pas"/>
+    <DCCReference Include="Source\Common\Data\SYNC_PianoRoll_PianoKeys.pas"/>
+    <DCCReference Include="Source\Common\Color\SYNC_PianoRoll_Colors.pas"/>
+    <DCCReference Include="Source\Common\Render\SYNC_PianoRoll_RGBA.pas"/>
+    <DCCReference Include="Source\Common\Layout\SYNC_PianoRoll_DisplayTypes.pas"/>
+    <DCCReference Include="Source\Common\Layout\SYNC_PianoRoll_PitchFollow.pas"/>
+    <DCCReference Include="Source\Display\Vertical\SYNC_PianoRoll_VerticalDisplay.pas"/>
+    <DCCReference Include="Source\Display\Horizontal\SYNC_PianoRoll_HorizontalDisplay.pas"/>
+    <DCCReference Include="Source\Display\Vertical3D\SYNC_PianoRoll_Vertical3DDisplay.pas"/>
+    <DCCReference Include="Source\Display\Horizontal3D\SYNC_PianoRoll_Horizontal3DDisplay.pas"/>
+    <DCCReference Include="Source\Display\Circular3D\SYNC_PianoRoll_Circular3DDisplay.pas"/>
+    <DCCReference Include="Source\Common\Render\SYNC_PianoRoll_Renderer.pas"/>
+    <DCCReference Include="Source\Plugin\Media\Registration\SYNC_PianoRoll_MediaItems.pas"/>
+    <DCCReference Include="Source\Plugin\Media\Editor\SYNC_PianoRoll_SizePreset.pas"/>
+    <DCCReference Include="Source\Plugin\Media\Settings\SYNC_PianoRoll_MediaSettings.pas"/>
+    <DCCReference Include="Source\Plugin\Media\Timeline\SYNC_PianoRoll_MediaTime.pas"/>
+    <DCCReference Include="Source\Plugin\Media\Render\SYNC_PianoRoll_MediaDispatch.pas"/>
+    <DCCReference Include="Source\Plugin\Media\SYNC_PianoRoll_MediaPlugin.pas"/>
+    <BuildConfiguration Include="Base"><Key>Base</Key></BuildConfiguration>
+    <BuildConfiguration Include="Debug"><Key>Cfg_1</Key><CfgParent>Base</CfgParent></BuildConfiguration>
+    <BuildConfiguration Include="Release"><Key>Cfg_2</Key><CfgParent>Base</CfgParent></BuildConfiguration>
+  </ItemGroup>
     <ProjectExtensions>
         <Borland.Personality>Delphi.Personality.12</Borland.Personality>
         <Borland.ProjectType>Application</Borland.ProjectType>
@@ -158,23 +142,5 @@
         </BorlandProject>
         <ProjectFileVersion>12</ProjectFileVersion>
     </ProjectExtensions>
-    <Import Project="$(BDS)\Bin\CodeGear.Delphi.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Delphi.Targets')"/>
-    <Import Project="$(APPDATA)\Embarcadero\$(BDSAPPDATABASEDIR)\$(PRODUCTVERSION)\UserTools.proj" Condition="Exists('$(APPDATA)\Embarcadero\$(BDSAPPDATABASEDIR)\$(PRODUCTVERSION)\UserTools.proj')"/>
-    <Import Project="$(MSBuildProjectName).deployproj" Condition="Exists('$(MSBuildProjectName).deployproj')"/>
-    <PropertyGroup Condition="'$(Config)'=='Debug' And '$(Platform)'=='Win64'">
-        <PreBuildEvent>if not exist &quot;C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll&quot; mkdir &quot;C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll&quot;</PreBuildEvent>
-        <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
-        <PreLinkEvent/>
-        <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
-        <PostBuildEvent>copy /Y &quot;C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll\$(PROJECTNAME).dll&quot; &quot;C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll\$(PROJECTNAME).auf2&quot;</PostBuildEvent>
-        <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
-    </PropertyGroup>
-    <PropertyGroup Condition="'$(Config)'=='Release' And '$(Platform)'=='Win64'">
-        <PreBuildEvent>if not exist &quot;C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll&quot; mkdir &quot;C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll&quot;</PreBuildEvent>
-        <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
-        <PreLinkEvent/>
-        <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
-        <PostBuildEvent>copy /Y &quot;C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll\$(PROJECTNAME).dll&quot; &quot;C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll\$(PROJECTNAME).auf2&quot;&amp;&amp;if exist &quot;C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll\$(PROJECTNAME).dll&quot; del /Q &quot;C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll\$(PROJECTNAME).dll&quot;&amp;&amp;if exist &quot;C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll\$(PROJECTNAME).rsm&quot; del /Q &quot;C:\ProgramData\aviutl2\Plugin\SYNC_PianoRoll\$(PROJECTNAME).rsm&quot;</PostBuildEvent>
-        <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
-    </PropertyGroup>
+  <Import Project="$(BDS)\Bin\CodeGear.Delphi.Targets"/>
 </Project>

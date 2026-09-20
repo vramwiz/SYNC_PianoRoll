@@ -1,16 +1,12 @@
-﻿library SYNC_PianoRoll_Filter;
+library SYNC_PianoRoll_Filter;
 
-// ピアノロールフィルターの AviUtl2 DLL 境界。
+// 単体配置できる「ピアノロール」メディアオブジェクトのAviUtl2 DLL境界。
 
 {$ALIGN 8}
 
 uses
   Winapi.Windows,
   AviUtl2FilterTypes in 'Source\Lib\AviUtl2FilterTypes.pas',
-  SharedMemoryBase in 'Source\Lib\SharedMemoryBase.pas',
-  SYNC_PianoRoll_FrameShared in 'Source\Common\Timeline\SYNC_PianoRoll_FrameShared.pas',
-  SYNC_PianoRoll_ContextManager in 'Source\Common\Timeline\SYNC_PianoRoll_ContextManager.pas',
-  SYNC_PianoRoll_Time in 'Source\Common\Timeline\SYNC_PianoRoll_Time.pas',
   RTTIPersistent in 'Source\Lib\SongReader\RTTIPersistent.pas',
   RTTIPersistentIni in 'Source\Lib\SongReader\RTTIPersistentIni.pas',
   SectionFileManager in 'Source\Lib\SongReader\SectionFileManager.pas',
@@ -41,22 +37,27 @@ uses
   SYNC_PianoRoll_Horizontal3DDisplay in 'Source\Display\Horizontal3D\SYNC_PianoRoll_Horizontal3DDisplay.pas',
   SYNC_PianoRoll_Circular3DDisplay in 'Source\Display\Circular3D\SYNC_PianoRoll_Circular3DDisplay.pas',
   SYNC_PianoRoll_Renderer in 'Source\Common\Render\SYNC_PianoRoll_Renderer.pas',
-  SYNC_PianoRoll_FilterPlugin in 'Source\Plugin\Filter\SYNC_PianoRoll_FilterPlugin.pas';
+  SYNC_PianoRoll_MediaItems in 'Source\Plugin\Media\Registration\SYNC_PianoRoll_MediaItems.pas',
+  SYNC_PianoRoll_SizePreset in 'Source\Plugin\Media\Editor\SYNC_PianoRoll_SizePreset.pas',
+  SYNC_PianoRoll_MediaSettings in 'Source\Plugin\Media\Settings\SYNC_PianoRoll_MediaSettings.pas',
+  SYNC_PianoRoll_MediaTime in 'Source\Plugin\Media\Timeline\SYNC_PianoRoll_MediaTime.pas',
+  SYNC_PianoRoll_MediaDispatch in 'Source\Plugin\Media\Render\SYNC_PianoRoll_MediaDispatch.pas',
+  SYNC_PianoRoll_MediaPlugin in 'Source\Plugin\Media\SYNC_PianoRoll_MediaPlugin.pas';
 
 function InitializePlugin(Version: DWORD): Byte; cdecl;
 begin
-  InitializePianoRollFilter;
+  InitializePianoRollMedia;
   Result := 1;
 end;
 
 procedure UninitializePlugin; cdecl;
 begin
-  FinalizePianoRollFilter;
+  FinalizePianoRollMedia;
 end;
 
 function GetFilterPluginTable: PFILTER_PLUGIN_TABLE; cdecl;
 begin
-  Result := GetPianoRollFilterTable;
+  Result := GetPianoRollMediaTable;
 end;
 
 exports

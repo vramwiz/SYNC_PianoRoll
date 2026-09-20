@@ -333,6 +333,10 @@ begin
   Video.SetDefaultAnchor := CaptureAnchor;
   Data := TMockMusicData.Create;
   SetDefaultPianoRollDisplaySettings(Settings);
+  // 平面形状と押し出しの差を測るため、製品初期値とは独立に厚みをゼロへ揃える。
+  Settings.WhiteKey3DThickness := 0;
+  Settings.BlackKey3DThickness := 0;
+  Settings.Note3DThickness := 0;
   Settings.CenterNote := 60;
   Settings.VisibleNoteCount := 24;
   Settings.SingleTrackColor := PianoRollColor(7, 8, 9, 255);

@@ -1,6 +1,6 @@
-﻿program SYNC_PianoRoll_FilterSettingsTests;
+﻿program SYNC_PianoRoll_MediaSettingsTests;
 
-// 実Filter DLLの音域設定とサイズプリセットが描画項目へ反映されることを検証する。
+// 実メディアDLLの設定、初期素材寸法、2D/3D出力契約を検証する。
 
 {$APPTYPE CONSOLE}
 
@@ -15,10 +15,11 @@ type
   TGetFilterPluginTable = function: PFILTER_PLUGIN_TABLE; cdecl;
   TInitializePlugin = function(Version: DWORD): Byte; cdecl;
   TUninitializePlugin = procedure; cdecl;
-  TItemArray = array[0..39] of Pointer;
+  TItemArray = array[0..43] of Pointer;
   PItemArray = ^TItemArray;
 
 var
+  CapturedWidth, CapturedHeight: Integer;
   CapturedOpaquePixels: Integer;
   CapturedPolyCalls: Integer;
   CapturedPresetLength: string;
@@ -39,6 +40,8 @@ type
 var
   I: Integer;
 begin
+  CapturedWidth := Width;
+  CapturedHeight := Height;
   CapturedOpaquePixels := 0;
   CapturedTrackPixels := 0;
   for I := 0 to Width * Height - 1 do
@@ -56,6 +59,9 @@ end;
 function CapturePoly(VertexType: Integer; VertexList: Pointer;
   VertexNum: Integer; Resource: LPCWSTR): Byte; cdecl;
 begin
+  // 単体メディアでは画像リソースを作ってからポリゴンを送らなければ描画されない。
+  Check((CapturedWidth = 1) and (CapturedHeight = 1),
+    '3D image resource must be initialized before DrawPoly');
   Inc(CapturedPolyCalls);
   Result := 1;
 end;
@@ -71,7 +77,7 @@ var
   ValueText: string;
 begin
   Result := 0;
-  if (Obj = nil) or (string(Effect) <> 'SYNC_ピアノロール_Filter') then
+  if (Obj = nil) or (string(Effect) <> 'ピアノロール') then
     Exit;
   ValueText := UTF8ToString(UTF8String(Value));
   if string(Item) = '鍵盤の長さ' then
@@ -115,6 +121,7 @@ var
   MidiFileName: string;
   ModuleHandle: HMODULE;
   ObjectInfo: TOBJECT_INFO;
+  SceneInfo: TSCENE_INFO;
   Table: PFILTER_PLUGIN_TABLE;
   UninitializePlugin: TUninitializePlugin;
   Video: TFILTER_PROC_VIDEO;
@@ -122,7 +129,7 @@ begin
   if ParamCount <> 1 then
     raise Exception.Create('plugin path is required');
   MidiFileName := TPath.Combine(TPath.GetTempPath,
-    'SYNC_PianoRoll_FilterSettings_' + TGUID.NewGuid.ToString + '.mid');
+    'SYNC_PianoRoll_MediaSettings_' + TGUID.NewGuid.ToString + '.mid');
   WriteMinimalMidi(MidiFileName);
   ModuleHandle := LoadLibrary(PChar(ParamStr(1)));
   if ModuleHandle = 0 then
@@ -148,10 +155,10 @@ begin
         'piano keyboard must be the default');
       Check(PFILTER_ITEM_TRACK(Items^[9])^.Value = 30.0,
         '3D display time default mismatch');
-      Check((PFILTER_ITEM_TRACK(Items^[20])^.Value = 0) and
-        (PFILTER_ITEM_TRACK(Items^[21])^.Value = 0) and
-        (PFILTER_ITEM_TRACK(Items^[22])^.Value = 0),
-        '3D thickness defaults must be flat');
+      Check((PFILTER_ITEM_TRACK(Items^[20])^.Value = 30) and
+        (PFILTER_ITEM_TRACK(Items^[21])^.Value = 20) and
+        (PFILTER_ITEM_TRACK(Items^[22])^.Value = 20),
+        '3D thickness defaults mismatch');
       Check(PFILTER_ITEM_TRACK(Items^[17])^.Value = 0,
         'radius default must use automatic sizing');
       Check(PFILTER_ITEM_TRACK(Items^[18])^.Value = 0,
@@ -161,8 +168,12 @@ begin
       FillChar(Video, SizeOf(Video), 0);
       ObjectInfo.ID := 901;
       ObjectInfo.EffectID := 902;
-      ObjectInfo.Width := 640;
-      ObjectInfo.Height := 360;
+      FillChar(SceneInfo, SizeOf(SceneInfo), 0);
+      SceneInfo.Width := 640;
+      SceneInfo.Height := 360;
+      SceneInfo.Rate := 30;
+      SceneInfo.Scale := 1;
+      Video.Scene := @SceneInfo;
       Video.Object_ := @ObjectInfo;
       Video.SetImageData := CaptureImage;
       Video.DrawPoly := CapturePoly;
@@ -172,6 +183,14 @@ begin
       CapturedOpaquePixels := 0;
       Table^.Func_Proc_Video(@Video);
       FullRangePixels := CapturedOpaquePixels;
+      Check((CapturedWidth = 640) and (CapturedHeight = 360), 'scene dimensions not used');
+      Check((ObjectInfo.Width = 0) and (ObjectInfo.Height = 0), 'host object was modified');
+      PFILTER_ITEM_TRACK(Items^[39])^.Value := 320;
+      PFILTER_ITEM_TRACK(Items^[40])^.Value := 240;
+      Check(Table^.Func_Proc_Video(@Video) = 1, '2D must continue standard output');
+      Check((CapturedWidth = 320) and (CapturedHeight = 240), 'custom dimensions not used');
+      PFILTER_ITEM_TRACK(Items^[39])^.Value := 0;
+      PFILTER_ITEM_TRACK(Items^[40])^.Value := 0;
 
       PFILTER_ITEM_TRACK(Items^[12])^.Value := 1;
       PFILTER_ITEM_TRACK(Items^[13])^.Value := 61;
@@ -183,6 +202,34 @@ begin
       Check(SingleRangePixels > 0, 'single note range was not rendered');
       Check(SingleRangePixels < FullRangePixels,
         'pitch range settings did not change the rendered pixels');
+
+      // 開始位置・速度は入力プラグインの発火を待たず、次の描画で反映する。
+      // 曲開始前は発音せず、指定した待ち時間を経過すると先頭のノートを表示する。
+      PFILTER_ITEM_TRACK(Items^[41])^.Value := -10;
+      Table^.Func_Proc_Video(@Video);
+      Check(CapturedTrackPixels = 0, 'negative start was clamped or played early');
+      ObjectInfo.Frame := 300;
+      Table^.Func_Proc_Video(@Video);
+      Check(CapturedTrackPixels > 0, 'delayed music did not start at zero');
+      ObjectInfo.Frame := 0;
+      PFILTER_ITEM_TRACK(Items^[41])^.Value := 10;
+      Table^.Func_Proc_Video(@Video);
+      Check(CapturedTrackPixels = 0, 'start position was ignored');
+      PFILTER_ITEM_TRACK(Items^[41])^.Value := 0;
+      PFILTER_ITEM_TRACK(Items^[42])^.Value := 0;
+      ObjectInfo.Frame := 300;
+      Table^.Func_Proc_Video(@Video);
+      Check(CapturedTrackPixels > 0, 'zero playback rate did not freeze music time');
+      PFILTER_ITEM_TRACK(Items^[42])^.Value := 100;
+      Table^.Func_Proc_Video(@Video);
+      Check(CapturedTrackPixels = 0, 'playback rate change was ignored');
+      ObjectInfo.Frame := 0;
+      ObjectInfo.ID := 903;
+      Table^.Func_Proc_Video(@Video);
+      Check(CapturedTrackPixels > 0, 'another object inherited the previous time');
+      Check(GetTable() = Table, 'registration table address changed');
+      Check(PFILTER_ITEM_TRACK(Items^[12])^.Value = 1,
+        'table retrieval reset current settings');
 
       // 基準音域外のノートは追従なしでは隠れ、両追従方式では表示される。
       PFILTER_ITEM_TRACK(Items^[12])^.Value := 12;
@@ -214,12 +261,12 @@ begin
       PFILTER_ITEM_SELECT(Items^[2])^.Value := 1;
       PFILTER_ITEM_SELECT(Items^[4])^.Value := 0;
       CapturedPolyCalls := 0;
-      Table^.Func_Proc_Video(@Video);
+      Check(Table^.Func_Proc_Video(@Video) = 0, '3D must stop standard output');
       Check(CapturedPolyCalls > 0,
         '3D vertical Type1 did not use DrawPoly');
       PFILTER_ITEM_SELECT(Items^[4])^.Value := 1;
       CapturedPolyCalls := 0;
-      Table^.Func_Proc_Video(@Video);
+      Check(Table^.Func_Proc_Video(@Video) = 0, '3D must stop standard output');
       Check(CapturedPolyCalls > 0,
         '3D horizontal Type1 did not use DrawPoly');
 
@@ -227,21 +274,30 @@ begin
       PFILTER_ITEM_SELECT(Items^[3])^.Value := 1;
       PFILTER_ITEM_TRACK(Items^[17])^.Value := 0;
       CapturedPolyCalls := 0;
-      Table^.Func_Proc_Video(@Video);
+      Check(Table^.Func_Proc_Video(@Video) = 0, '3D must stop standard output');
       Check(CapturedPolyCalls > 0,
         '3D Type2 did not use the circular DrawPoly path');
       PFILTER_ITEM_SELECT(Items^[3])^.Value := 2;
       PFILTER_ITEM_SELECT(Items^[4])^.Value := 0;
       CapturedPolyCalls := 0;
-      Table^.Func_Proc_Video(@Video);
+      Check(Table^.Func_Proc_Video(@Video) = 0, '3D must stop standard output');
       Check(CapturedPolyCalls > 0,
         '3D Type3 vertical did not use the swapped cylinder DrawPoly path');
       PFILTER_ITEM_SELECT(Items^[4])^.Value := 1;
       CapturedPolyCalls := 0;
-      Table^.Func_Proc_Video(@Video);
+      Check(Table^.Func_Proc_Video(@Video) = 0, '3D must stop standard output');
       Check(CapturedPolyCalls > 0,
         '3D Type3 horizontal did not use the outward cylinder DrawPoly path');
       PFILTER_ITEM_SELECT(Items^[3])^.Value := 0;
+
+      Video.DrawPoly := nil;
+      CapturedOpaquePixels := -1;
+      Check(Table^.Func_Proc_Video(@Video) = 0, 'missing DrawPoly must stop');
+      Check(CapturedOpaquePixels = -1, '3D unexpectedly fell back to 2D');
+      Video.DrawPoly := CapturePoly;
+      PFILTER_ITEM_FILE(Items^[0])^.Value := '';
+      Check(Table^.Func_Proc_Video(@Video) = 0, 'empty music must stop');
+      PFILTER_ITEM_FILE(Items^[0])^.Value := PWideChar(MidiFileName);
 
       // 大プリセットのボタンでローカル値と選択中オブジェクトを同時に更新する。
       FillChar(Edit, SizeOf(Edit), 0);

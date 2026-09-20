@@ -158,7 +158,7 @@ begin
     not Assigned(Display) then
     Exit;
 
-  // 単体配置ではシーン寸法、Input＋Filterではベース画像寸法がここへ渡される。
+  // 呼び出し元が解決した描画寸法を使う。メディア初期入力ではローカルコピーに補完される。
   Width := Video^.Object_^.Width;
   Height := Video^.Object_^.Height;
   if (Width <= 0) or (Height <= 0) or
