@@ -12,8 +12,8 @@ video.rate=30
 video.scale=1
 audio.rate=44100
 output.file=C:\Users\zan12\Videos\x_68.mp4
-cursor.frame=284
-cursor.layer=3
+cursor.frame=251
+cursor.layer=2
 preview.frame=0
 display.frame=0
 display.layer=0
@@ -32,12 +32,12 @@ display.tempo.start=0.000000
 display.tempo.offset=0.000000
 [0]
 layer=0
-frame=0,963
+frame=0,537
 [0.0]
 effect.name=カメラ制御
 X=0.00
 Y=0.00
-Z=-924.00
+Z=-1024.00
 Group=1
 目標X=0.00
 目標Y=0.00
@@ -51,27 +51,28 @@ Group2=1
 対象レイヤー数=0
 [1]
 layer=1
-frame=0,963
+focus=1
+frame=0,537
 [1.0]
 effect.name=ピアノロール
 音楽ファイル=D:\DelphiProg\SYNC_PianoRoll\Samples\PianoRoll_Demo.mid
 表示分類=ピアノ
 描画方式=3D
-表示タイプ=Type1
+表示タイプ=Type3
 方向=縦
 鍵盤タイプ=標準ピアノ
-サイズ=中
+サイズ=大
 サイズ適用=
-表示時間 (秒)=10.0
-表示時間 3D (秒)=30.0
+表示時間 (秒)=4.0
+表示時間 3D (秒)=79.6
 発音位置 (%)=80
 ずらし (秒)=0.00
-表示音階数=72
-中央ノート=67
-音域追従=追従しない
-鍵盤の長さ=120
-鍵盤の太さ=40
-半径=0
+表示音階数=60
+中央ノート=64
+音域追従=はみ出したとき追従
+鍵盤の長さ=180
+鍵盤の太さ=60
+半径=676
 ノート位置オフセット=0
 ノート太さ (%)=80
 白鍵3D厚み=30
@@ -95,19 +96,19 @@ effect.name=ピアノロール
 発音エフェクト=Type1
 描画幅 (0=シーン)=0
 描画高さ (0=シーン)=0
-開始位置 (秒)=-10
+開始位置 (秒)=0
 再生速度 (%)=100.00
 [1.1]
 effect.name=標準描画
 X=0.00
-Y=-150.00
+Y=0.00
 Z=0.00
 Group=1
 中心X=0.00
 中心Y=0.00
 中心Z=0.00
 Group3=1
-X軸回転=-35.00
+X軸回転=-60.00
 Y軸回転=0.00
 Z軸回転=0.00
 Group2=1
@@ -115,21 +116,6 @@ Group2=1
 縦横比=0.000
 透明度=0.00
 合成モード=通常
-[2]
-layer=2
-focus=1
-frame=299,1262
-[2.0]
-effect.name=音声ファイル
-再生位置=0.000,32.134,再生範囲,0
-再生速度=100.00
-ファイル=D:\DelphiProg\SYNC_PianoRoll\Samples\untitled.wav
-トラック=0
-ループ再生=0
-[2.1]
-effect.name=音声再生
-音量=100.00
-左右=0.00
 [plugin.0]
 plugin.name=Syncroh2_Extension2
 SerifDrawStylesV1=
